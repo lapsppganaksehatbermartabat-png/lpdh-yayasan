@@ -149,18 +149,34 @@
             alertBox.classList.remove('d-none');
         }
 
-        function getUserSession() {
+        async function getUserSession() {
             try {
-                const localUser = JSON.parse(localStorage.getItem('sppg_user') || '{}');
+                let localUser = null;
+                try {
+                    localUser = JSON.parse(sessionStorage.getItem('sppg_user') || 'null');
+                } catch(err) {}
+
+                if (!localUser && window.parent && window.parent.sessionStorage) {
+                    try {
+                        localUser = JSON.parse(window.parent.sessionStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (!localUser) {
+                    try {
+                        localUser = JSON.parse(localStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
                 if (localUser) {
                     currentUserIdsppg = localUser.idsppg;
                     currentUserNama = localUser.nama_petugas || 'System';
                     
                     const role = String(localUser.role_access || '').toLowerCase();
                     const jabatan = String(localUser.jabatan || '').toLowerCase();
+                    const email = String(localUser.username || localUser.email || '').toLowerCase();
                     
-                    // Deteksi Super User / Admin / Editor secara menyeluruh
-                    isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super');
+                    isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super') || email === 'haaziqnawraalfatih@gmail.com';
 
                     if (!isSuperAdmin && currentUserIdsppg) {
                         const inputIdsppg = document.getElementById('idsppg');
@@ -353,8 +369,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            getUserSession();
-            fetchPetugasData();
+            await getUserSession();
+            await fetchPetugasData();
         });
     </script>
 </body>
