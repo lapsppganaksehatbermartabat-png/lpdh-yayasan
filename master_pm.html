@@ -450,7 +450,8 @@
             tampilkanDataKeTabel(semuaDataPM);
         }
 
-        // 3. Tampilkan Data ke Tabel HTML
+
+// 3. Tampilkan Data ke Tabel HTML
         function tampilkanDataKeTabel(data) {
             const tbody = document.getElementById('tablePMBody');
             
@@ -465,6 +466,9 @@
                 const hargaKecil = item.hrgapaketkecil ? 'Rp ' + Number(item.hrgapaketkecil).toLocaleString('id-ID') : 'Rp 8.000';
                 const hargaBesar = item.hrgapaketbesar ? 'Rp ' + Number(item.hrgapaketbesar).toLocaleString('id-ID') : 'Rp 10.000';
                 
+                // Menangkap berbagai kemungkinan penamaan kolom idsppg di database
+                const displayIdsppg = item.idsppg || item.id_sppg || item.IDSppg || '-';
+
                 html += `
                     <tr>
                         <td class="text-center">
@@ -472,7 +476,7 @@
                         </td>
                         <td>${index + 1}</td>
                         <td><span class="badge bg-light text-dark border">${item.idkpm || '-'}</span></td>
-                        <td><span class="fw-semibold text-primary">${item.idsppg || '-'}</span></td>
+                        <td><span class="fw-semibold text-primary">${displayIdsppg}</span></td>
                         <td class="fw-semibold">
                             <a href="javascript:void(0);" onclick='bukaDetailPM(${JSON.stringify(item)})' class="text-primary text-decoration-none" title="Klik untuk lihat detail">
                                 ${item.NamaKelompokPenerimamanfaat || '-'}
@@ -495,8 +499,10 @@
 
         // Fungsi Membuka Modal Detail PM
         function bukaDetailPM(item) {
+            const displayIdsppg = item.idsppg || item.id_sppg || item.IDSppg || '-';
+
             document.getElementById('det-idkpm').textContent = item.idkpm || '-';
-            document.getElementById('det-idsppg').textContent = item.idsppg || '-';
+            document.getElementById('det-idsppg').textContent = displayIdsppg;
             document.getElementById('det-klasifikasi').textContent = item.klasifikasiinstansi || '-';
             document.getElementById('det-namapm').textContent = item.NamaKelompokPenerimamanfaat || '-';
 
