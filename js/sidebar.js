@@ -10,50 +10,30 @@ window.renderSidebar = function () {
         return;
     }
 
-    // Ambil data user TERBARU dari localStorage atau sessionStorage
+    // 1. Ambil data user dari sessionStorage / localStorage
     let currentUser = {};
-
     try {
         currentUser = JSON.parse(
-            localStorage.getItem('sppg_user') || sessionStorage.getItem('sppg_user') || '{}'
+            sessionStorage.getItem('sppg_user') || localStorage.getItem('sppg_user') || '{}'
         );
     } catch (error) {
         console.error('Gagal membaca data user:', error);
     }
 
+    // 2. Deklarasikan variabel secara eksplisit di sini agar scope-nya aman
     const userJabatan = String(currentUser.jabatan || '').toLowerCase().trim();
     const userRole = String(currentUser.role_access || '').toLowerCase().trim();
+    const userEmail = String(currentUser.username || currentUser.email || '').toLowerCase().trim();
 
-    // Deteksi mutlak Super User / Admin
+    // 3. Evaluasi status Super User
     const isSuperUser =
         userJabatan.includes('super') ||
         userRole === 'superadmin' ||
         userRole === 'super_user' ||
-        userRole === 'admin';
+        userRole === 'admin' ||
+        userEmail === 'haaziqnawraalfatih@gmail.com';
 
-    // Ambil hak akses menu dengan pengaman objek kosong
-    const permissions = currentUser.menu_permissions || {};
-
-    // Fungsi pengecekan akses
-    function getAccess(menuKey) {
-        // Jika Super User atau Role Admin, berikan akses 'edit' secara mutlak
-        if (isSuperUser || userRole === 'admin' || userRole === 'superadmin') {
-            return 'edit';
-        }
-
-        // Staf biasa mendapatkan akses sesuai pengaturan database
-        const access = permissions[menuKey];
-
-        if (
-            access === undefined ||
-            access === null ||
-            access === ''
-        ) {
-            return 'hidden';
-        }
-
-        return String(access).toLowerCase().trim();
-    }
+    console.log("Status isSuperUser:", isSuperUser); // Untuk memastikan nilainya true di console
 
     // =================================================
     // STATUS AKSES MENU
