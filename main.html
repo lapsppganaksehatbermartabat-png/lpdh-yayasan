@@ -1,0 +1,160 @@
+<!-- =====================================================
+     FILE: main.html (Diperketat dengan sessionStorage & Anti Klik Kanan)
+===================================================== -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi LPDH Yayasan</title>
+
+    <!-- KUNCI KEAMANAN GERBANG UTAMA (SESSION STORAGE & REDIRECT) -->
+    <script>
+        (function guardPage() {
+            try {
+                // Menggunakan sessionStorage agar sesi hancur saat tab/browser ditutup
+                const storedUser = sessionStorage.getItem('sppg_user');
+                const currentUser = storedUser ? JSON.parse(storedUser) : null;
+                
+                if (!currentUser || (!currentUser.id && !currentUser.username)) {
+                    window.location.replace('login.html');
+                }
+            } catch (err) {
+                sessionStorage.removeItem('sppg_user');
+                window.location.replace('login.html');
+            }
+        })();
+    </script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body oncontextmenu="return false;"> <!-- MATIKAN KLIK KANAN DI SELURUH HALAMAN -->
+
+    <!-- SIDEBAR -->
+    <nav id="sidebar"></nav>
+
+    <!-- CONTENT WRAPPER -->
+    <div id="content-wrapper">
+        <header class="topbar">
+            <button class="btn btn-light border btn-sm" id="sidebarToggle">
+                <i class="bi bi-list fs-5"></i>
+            </button>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary border">
+                    Yayasan Anak Sehat
+                </span>
+                <div id="user-role-badge" class="fw-semibold text-secondary small">
+                    Memuat pengguna...
+                </div>
+            </div>
+        </header>
+
+        <!-- AREA MODUL -->
+        <iframe id="contentFrame" src="about:blank"></iframe>
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/sidebar.js"></script>
+
+    <script>
+        const SUPABASE_URL = 'https://qpdbfnwxqbkqoqwfcaqg.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwZGJmbnd4cWJrcW9xd2ZjYXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzMDU2MzksImV4cCI6MjEwODg4MTYzOX0.es9VI3nOYYSKlH_4xedXRYpY_v6RYh0adirWsEcMqsQ';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        window.loadPage = function (pageUrl, element) {
+            const iframe = document.getElementById('contentFrame');
+            if (iframe) {
+                iframe.src = pageUrl;
+            }
+            document.querySelectorAll('.sidebar-menu a').forEach(function (a) {
+                a.classList.remove('active');
+            });
+            if (element) {
+                element.classList.add('active');
+            }
+        };
+
+        window.handleLogout = function () {
+            if (confirm('Apakah Anda yakin keluar dari aplikasi?')) {
+                sessionStorage.removeItem('sppg_user');
+                window.location.replace('login.html');
+            }
+        };
+
+        async function initSession() {
+            const badge = document.getElementById('user-role-badge');
+            let currentUser = {};
+
+            try {
+                currentUser = JSON.parse(sessionStorage.getItem('sppg_user') || '{}');
+            } catch (error) {
+                sessionStorage.removeItem('sppg_user');
+                window.location.replace('login.html');
+                return;
+            }
+
+            if (!currentUser.id && !currentUser.username) {
+                window.location.replace('login.html');
+                return;
+            }
+
+            if (currentUser.id) {
+                try {
+                    const { data: freshUser, error } = await supabaseClient
+                        .from('users_login')
+                        .select('*')
+                        .eq('id', currentUser.id)
+                        .single();
+
+                    if (!error && freshUser) {
+                        currentUser = {
+                            ...currentUser,
+                            idsppg: freshUser.idsppg,
+                            nama_petugas: freshUser.nama_petugas,
+                            jabatan: freshUser.jabatan,
+                            role_access: freshUser.role_access
+                        };
+                        sessionStorage.setItem('sppg_user', JSON.stringify(currentUser));
+                    }
+                } catch (error) {
+                    console.warn('Menggunakan sesi lokal.');
+                }
+            }
+
+            if (badge) {
+                badge.innerText = `${currentUser.nama_petugas || 'Pengguna'} (${currentUser.jabatan || 'Staff'})`;
+            }
+
+            if (typeof window.renderSidebar === 'function') {
+                window.renderSidebar();
+            }
+
+            const iframe = document.getElementById('contentFrame');
+            if (iframe) {
+                iframe.src = 'dashboard.html';
+            }
+        }
+
+        document.getElementById('sidebarToggle').addEventListener('click', function () {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+
+        // Blokir kombinasi tombol inspect/shortcut berbahaya jika diperlukan
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) || (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        initSession();
+    </script>
+</body>
+</html>

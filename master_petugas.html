@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Petugas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
+        .card { border: 1px solid #e2e8f0; border-radius: 0.5rem; }
+        .readonly-locked { background-color: #e9ecef !important; cursor: not-allowed; }
+    </style>
+</head>
+<body class="p-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Data Master Petugas</h4>
+            <p class="text-muted small mb-0">Kelola data petugas, jabatan, nomor SK, kontak, dan status keaktifan</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-danger btn-sm me-2" id="btnHapusMasal" onclick="hapusDataMasal()" disabled>
+                <i class="bi bi-trash3 me-1"></i> Hapus Terpilih (<span id="countTerpilih">0</span>)
+            </button>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahPetugas">
+                <i class="bi bi-plus-lg me-1"></i> Tambah Petugas
+            </button>
+        </div>
+    </div>
+
+    <!-- KOTAK DEBUGGER -->
+    <div id="debug-alert" class="alert alert-danger d-none mb-3 small" role="alert">
+        <strong>Peringatan Sistem:</strong> <span id="debug-message"></span>
+    </div>
+
+    <div class="card shadow-sm bg-white mb-3">
+        <div class="card-body py-3">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="inputPencarian" placeholder="Cari berdasarkan Nama Petugas, NIK/NIP, atau Jabatan..." onkeyup="filterDataPetugas()">
+                <button class="btn btn-outline-secondary" type="button" onclick="resetPencarian()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm bg-white">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle small">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40" class="text-center"><input type="checkbox" class="form-check-input" id="checkAll" onclick="pilihSemuaBaris(this)"></th>
+                            <th>No</th>
+                            <th>ID SPPG</th>
+                            <th>Nama Petugas</th>
+                            <th>NIK / NIP & Jabatan</th>
+                            <th>Nomor SK & Tgl SK</th>
+                            <th>Kontak / Telp</th>
+                            <th>Status</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablePetugasBody">
+                        <tr><td colspan="9" class="text-center text-muted py-4">Memuat data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH -->
+    <div class="modal fade" id="modalTambahPetugas" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold fs-6">Tambah Master Petugas Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formTambahPetugas">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">ID SPPG</label>
+                                <input type="text" class="form-control form-control-sm" id="idsppg" placeholder="ID SPPG Terkait" required>
+                                <small class="text-muted" id="infoIdsppg" style="font-size: 10px; display: none;">Terkunci sesuai akun Anda</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Nama Petugas</label>
+                                <input type="text" class="form-control form-control-sm" id="nama" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">NIK / NIP</label>
+                                <input type="text" class="form-control form-control-sm" id="niknip">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Jabatan</label>
+                                <input type="text" class="form-control form-control-sm" id="jabatan">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">E-Mail</label>
+                                <input type="email" class="form-control form-control-sm" id="email">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">No. Telepon / WhatsApp</label>
+                                <input type="text" class="form-control form-control-sm" id="notelp">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Nomor SK</label>
+                                <input type="text" class="form-control form-control-sm" id="nomorsk">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Tanggal SK</label>
+                                <input type="date" class="form-control form-control-sm" id="tanggalsk">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">TMT</label>
+                                <input type="date" class="form-control form-control-sm" id="tmt">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">TMS</label>
+                                <input type="date" class="form-control form-control-sm" id="tms">
+                            </div>
+                        </div>
+                        <div class="mt-4 text-end">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btnSimpanPetugas">Simpan Data</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/supabase.js"></script>
+
+    <script>
+        let semuaDataPetugas = [];
+        let currentUserIdsppg = null;
+        let isSuperAdmin = false;
+        let currentUserNama = 'System';
+
+        function showDebug(msg) {
+            const alertBox = document.getElementById('debug-alert');
+            const msgSpan = document.getElementById('debug-message');
+            msgSpan.textContent = msg;
+            alertBox.classList.remove('d-none');
+        }
+
+        function getUserSession() {
+            try {
+                const localUser = JSON.parse(localStorage.getItem('sppg_user') || '{}');
+                if (localUser) {
+                    currentUserIdsppg = localUser.idsppg;
+                    currentUserNama = localUser.nama_petugas || 'System';
+                    
+                    const role = String(localUser.role_access || '').toLowerCase();
+                    const jabatan = String(localUser.jabatan || '').toLowerCase();
+                    
+                    // Deteksi Super User / Admin / Editor secara menyeluruh
+                    isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super');
+
+                    if (!isSuperAdmin && currentUserIdsppg) {
+                        const inputIdsppg = document.getElementById('idsppg');
+                        if (inputIdsppg) {
+                            inputIdsppg.value = currentUserIdsppg;
+                            inputIdsppg.readOnly = true;
+                            inputIdsppg.classList.add('readonly-locked');
+                            document.getElementById('infoIdsppg').style.display = 'block';
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Gagal membaca sesi user:', err);
+            }
+        }
+
+        document.getElementById('modalTambahPetugas').addEventListener('show.bs.modal', function () {
+            document.getElementById('formTambahPetugas').reset();
+            if (!isSuperAdmin && currentUserIdsppg) {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.value = currentUserIdsppg;
+                inputIdsppg.readOnly = true;
+                inputIdsppg.classList.add('readonly-locked');
+            } else {
+                document.getElementById('idsppg').readOnly = false;
+                document.getElementById('idsppg').classList.remove('readonly-locked');
+            }
+        });
+
+        // 2. Ambil Data dengan Filter Akses
+        async function fetchPetugasData() {
+            const tbody = document.getElementById('tablePetugasBody');
+            
+            if (typeof _supabase === 'undefined') {
+                showDebug("Objek '_supabase' tidak ditemukan.");
+                return;
+            }
+
+            let query = _supabase
+                .from('master_petugas')
+                .select('*')
+                .is('deleted_at', null);
+
+            // Jika BUKAN Super User, filter berdasarkan idsppg miliknya
+            if (!isSuperAdmin) {
+                if (currentUserIdsppg) {
+                    query = query.eq('idsppg', currentUserIdsppg);
+                } else {
+                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES');
+                }
+            }
+
+            const { data, error } = await query.order('id', { ascending: true });
+
+            if (error) {
+                showDebug(`Error Supabase: ${error.message}`);
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
+                return;
+            }
+
+            semuaDataPetugas = data || [];
+            tampilkanDataKeTabel(semuaDataPetugas);
+        }
+
+        function tampilkanDataKeTabel(data) {
+            const tbody = document.getElementById('tablePetugasBody');
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data petugas yang ditemukan.</td></tr>`;
+                updateTombolHapusMasal();
+                return;
+            }
+
+            let html = '';
+            data.forEach((item, index) => {
+                const badgeStatus = item.tms ? '<span class="badge bg-secondary">Tidak Aktif</span>' : '<span class="badge bg-success">Aktif</span>';
+                html += `
+                    <tr>
+                        <td class="text-center"><input type="checkbox" class="form-check-input check-item" value="${item.id}" onchange="updateTombolHapusMasal()"></td>
+                        <td>${index + 1}</td>
+                        <td>${item.idsppg || '-'}</td>
+                        <td class="fw-semibold">${item.nama || '-'}</td>
+                        <td><small><b>NIK/NIP:</b> ${item.niknip || '-'}<br><b>Jabatan:</b> ${item.jabatan || '-'}</small></td>
+                        <td><small><b>No. SK:</b> ${item.nomorsk || '-'}<br><b>Tgl SK:</b> ${item.tanggalsk || '-'}</small></td>
+                        <td>${item.notelp || '-'}<br><small class="text-muted">${item.email || '-'}</small></td>
+                        <td>${badgeStatus}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-danger" onclick="hapusPetugas(${item.id})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            updateTombolHapusMasal();
+        }
+
+        function filterDataPetugas() {
+            const keyword = document.getElementById('inputPencarian').value.toLowerCase();
+            const hasilFilter = semuaDataPetugas.filter(item => {
+                return (item.nama || '').toLowerCase().includes(keyword) || 
+                       String(item.niknip || '').toLowerCase().includes(keyword) || 
+                       (item.jabatan || '').toLowerCase().includes(keyword);
+            });
+            tampilkanDataKeTabel(hasilFilter);
+        }
+
+        function resetPencarian() {
+            document.getElementById('inputPencarian').value = '';
+            tampilkanDataKeTabel(semuaDataPetugas);
+        }
+
+        function pilihSemuaBaris(masterCheckbox) {
+            document.querySelectorAll('.check-item').forEach(cb => cb.checked = masterCheckbox.checked);
+            updateTombolHapusMasal();
+        }
+
+        function updateTombolHapusMasal() {
+            const count = document.querySelectorAll('.check-item:checked').length;
+            document.getElementById('countTerpilih').textContent = count;
+            document.getElementById('btnHapusMasal').disabled = count === 0;
+        }
+
+        // 3. Simpan Data
+        document.getElementById('formTambahPetugas').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSimpanPetugas');
+            btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+            const payload = {
+                idsppg: document.getElementById('idsppg').value,
+                nama: document.getElementById('nama').value,
+                niknip: document.getElementById('niknip').value,
+                jabatan: document.getElementById('jabatan').value,
+                email: document.getElementById('email').value,
+                notelp: document.getElementById('notelp').value,
+                nomorsk: document.getElementById('nomorsk').value,
+                tanggalsk: document.getElementById('tanggalsk').value || null,
+                tmt: document.getElementById('tmt').value || null,
+                tms: document.getElementById('tms').value || null,
+                create_by: currentUserNama
+            };
+
+            const { error } = await _supabase.from('master_petugas').insert([payload]);
+            
+            if (error) {
+                alert('Gagal menyimpan: ' + error.message);
+            } else {
+                bootstrap.Modal.getInstance(document.getElementById('modalTambahPetugas')).hide();
+                document.getElementById('formTambahPetugas').reset();
+                fetchPetugasData();
+            }
+            btn.disabled = false; btn.textContent = 'Simpan Data';
+        });
+
+        // 4. Hapus Data (SOFT DELETE)
+        async function hapusPetugas(id) {
+            if (confirm('Yakin ingin menghapus data petugas ini? (Data tetap tersimpan di database)')) {
+                const { error } = await _supabase
+                    .from('master_petugas')
+                    .update({ 
+                        deleted_at: new Date().toISOString(), 
+                        deleted_by: currentUserNama 
+                    })
+                    .eq('id', id);
+
+                if (error) alert('Gagal menghapus: ' + error.message);
+                else fetchPetugasData();
+            }
+        }
+
+        // 5. Hapus Masal (SOFT DELETE)
+        async function hapusDataMasal() {
+            const ids = Array.from(document.querySelectorAll('.check-item:checked')).map(cb => parseInt(cb.value));
+            if (ids.length === 0) return;
+
+            if (confirm(`Yakin ingin menghapus ${ids.length} data petugas yang dipilih?`)) {
+                const { error } = await _supabase
+                    .from('master_petugas')
+                    .update({ 
+                        deleted_at: new Date().toISOString(), 
+                        deleted_by: currentUserNama 
+                    })
+                    .in('id', ids);
+
+                if (error) alert('Gagal menghapus masal: ' + error.message);
+                else {
+                    document.getElementById('checkAll').checked = false;
+                    fetchPetugasData();
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            getUserSession();
+            fetchPetugasData();
+        });
+    </script>
+</body>
+</html>

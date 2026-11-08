@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Kontrol Super User</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- HEADER -->
+        <div class="mb-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">Panel Kontrol Super User</h1>
+                <p class="text-sm text-slate-500">Persetujuan akun staf, pengaturan role, dan kontrol hak akses menu operasional SPPG.</p>
+            </div>
+            <div>
+                <button onclick="loadUsersData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-rotate"></i> Muat Ulang
+                </button>
+            </div>
+        </div>
+
+        <div id="alert-box" class="hidden mb-4 p-4 rounded-xl text-sm font-semibold shadow-sm transition-all"></div>
+
+        <!-- STATISTIK -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase text-slate-400">Menunggu Persetujuan</p>
+                    <h3 id="stat-pending" class="text-2xl font-bold text-amber-600">0</h3>
+                </div>
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-lg"><i class="fa-solid fa-user-clock text-xl"></i></div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase text-slate-400">Akun Aktif</p>
+                    <h3 id="stat-active" class="text-2xl font-bold text-emerald-600">0</h3>
+                </div>
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><i class="fa-solid fa-user-check text-xl"></i></div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase text-slate-400">Total Pengguna Cabang</p>
+                    <h3 id="stat-total" class="text-2xl font-bold text-blue-600">0</h3>
+                </div>
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-lg"><i class="fa-solid fa-users text-xl"></i></div>
+            </div>
+        </div>
+
+        <!-- TABEL PENGGUNA -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-700">Daftar Akun Cabang & Kontrol Hak Akses Menu</h3>
+                <input type="text" id="search-user" onkeyup="filterUsers()" placeholder="Cari nama atau email..." class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-72">
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 border-b border-slate-200">
+                            <th class="p-3 w-1/5">Informasi Petugas</th>
+                            <th class="p-3 w-1/6">Jabatan & Status</th>
+                            <th class="p-3 w-1/2">Kontrol Hak Akses Menu</th>
+                            <th class="p-3 w-1/6 text-center">Aksi Akun</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-table-body" class="divide-y divide-slate-200">
+                        <!-- Data via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://qpdbfnwxqbkqoqwfcaqg.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwZGJmbnd4cWJrcW9xd2ZjYXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzMDU2MzksImV4cCI6MjEwODg4MTYzOX0.es9VI3nOYYSKlH_4xedXRYpY_v6RYh0adirWsEcMqsQ'; 
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let allUsersData = [];
+
+        const menuList = [
+            { key: 'dashboard', label: 'Dashboard' }, { key: 'master_sppg', label: 'Master SPPG' },
+            { key: 'master_petugas', label: 'Master Petugas' }, { key: 'master_pm', label: 'Master PM' },
+            { key: 'master_pic_sekolah', label: 'Master PIC Sekolah' }, { key: 'master_pic_posyandu', label: 'Master PIC Posyandu' },
+            { key: 'master_relawan', label: 'Master Relawan' }, { key: 'master_barang', label: 'Master Barang' },
+            { key: 'master_suplier', label: 'Master Suplier' }, { key: 'data_pm_on_going', label: 'Data PM On Going' },
+            { key: 'absen_relawan', label: 'Absen Relawan' }, { key: 'rab_bahan_baku', label: 'RAB Bahan Baku' },
+            { key: 'rab_operasional', label: 'RAB Operasional' }, { key: 'rab_insentif_sppg', label: 'RAB Insentif SPPG' },
+            { key: 'maker_bahan_baku', label: 'Maker Bahan Baku' }, { key: 'maker_operasional', label: 'Maker Operasional' },
+            { key: 'maker_pic_sekolah', label: 'Maker PIC Sekolah' }, { key: 'maker_pic_posyandu', label: 'Maker PIC Posyandu' },
+            { key: 'maker_insentif_sppg', label: 'Maker Insentif SPPG' }, { key: 'saldo_awal', label: 'Saldo Awal' },
+            { key: 'pemasukan', label: 'Pemasukan' }, { key: 'pengeluaran', label: 'Pengeluaran' },
+            { key: 'cetak_report', label: 'Cetak Report' }
+        ];
+
+        function showAlert(message, isSuccess = false) {
+            const box = document.getElementById('alert-box');
+            box.className = `mb-4 p-4 rounded-xl text-sm font-semibold shadow-md transition-all ${isSuccess ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`;
+            box.innerHTML = `<i class="fa-solid ${isSuccess ? 'fa-circle-check' : 'fa-triangle-exclamation'} me-2"></i> ${message}`;
+            box.classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => box.classList.add('hidden'), 4000);
+        }
+
+        async function cekAdminAccess() {
+            try {
+                const localUser = JSON.parse(localStorage.getItem('sppg_user') || '{}');
+                if (!localUser || !localUser.role_access) {
+                    window.location.replace('login.html');
+                    return false;
+                }
+                
+                const role = String(localUser.role_access).toLowerCase();
+                const jabatan = String(localUser.jabatan || '').toLowerCase();
+                const isSuper = role === 'superadmin' || role === 'admin' || jabatan.includes('super');
+
+                if (!isSuper) {
+                    alert("Akses Ditolak! Anda bukan Admin.");
+                    window.location.replace('main.html');
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                window.location.replace('login.html');
+                return false;
+            }
+        }
+
+        async function loadUsersData() {
+            const { data, error } = await supabaseClient
+                .from('users_login')
+                .select('*')
+                .order('id', { ascending: true });
+
+            if (error) {
+                showAlert('Gagal mengambil data user: ' + error.message);
+                return;
+            }
+
+            const rawData = data || [];
+
+            // FILTER YANG AMAN: Hanya menyembunyikan akun yang rolenya 'superadmin' atau jabatannya persis 'Super User' / 'Super Administrator'
+            allUsersData = rawData.filter(u => {
+                const role = String(u.role_access || '').toLowerCase();
+                const jabatan = String(u.jabatan || '').toLowerCase();
+                
+                // Jika rolenya superadmin atau jabatan mengandung kata "super user" / "super administrator", sembunyikan
+                const isSuperAccount = role === 'superadmin' || jabatan === 'super user' || jabatan.includes('super administrator');
+                return !isSuperAccount; 
+            });
+
+            renderTable(allUsersData);
+            updateStats(allUsersData);
+        }
+
+        function updateStats(data) {
+            const pendingCount = data.filter(u => u.is_active === false || u.is_active === 'false' || u.is_active === 0).length;
+            const activeCount = data.filter(u => u.is_active === true || u.is_active === 'true' || u.is_active === 1).length;
+            
+            document.getElementById('stat-pending').innerText = pendingCount;
+            document.getElementById('stat-active').innerText = activeCount;
+            document.getElementById('stat-total').innerText = data.length;
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('user-table-body');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">Belum ada pendaftaran akun cabang.</td></tr>`;
+                return;
+            }
+
+            data.forEach(user => {
+                const permissions = user.menu_permissions || {};
+                const isActive = user.is_active === true || user.is_active === 'true' || user.is_active === 1;
+                
+                let menuHtml = '<div class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-80 overflow-y-auto p-2 bg-slate-50 rounded-lg border border-slate-200">';
+                menuList.forEach(m => {
+                    const currentVal = permissions[m.key] || 'edit'; 
+                    menuHtml += `
+                        <div class="bg-white p-2 rounded-md border border-slate-200 flex items-center justify-between gap-2 shadow-xs">
+                            <span class="font-medium text-slate-700 text-xs w-40 truncate" title="${m.label}">${m.label}</span>
+                            <select id="perm_${user.id}_${m.key}" class="border border-slate-300 rounded px-2 py-1 bg-white text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                <option value="edit" ${currentVal === 'edit' ? 'selected' : ''}>Bisa Diedit</option>
+                                <option value="view" ${currentVal === 'view' ? 'selected' : ''}>Hanya Lihat</option>
+                                <option value="hidden" ${currentVal === 'hidden' ? 'selected' : ''}>Disembunyikan</option>
+                            </select>
+                        </div>
+                    `;
+                });
+                menuHtml += '</div>';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 align-top">
+                        <div class="font-bold text-slate-800">${user.nama_petugas || '-'}</div>
+                        <div class="text-xs text-slate-500">${user.username || '-'}</div>
+                        <div class="text-xs font-mono text-slate-400 mt-0.5">ID SPPG: ${user.idsppg || '-'}</div>
+                    </td>
+                    <td class="p-3 align-top">
+                        <div class="text-slate-700 font-medium">${user.jabatan || '-'}</div>
+                        <span class="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                            ${isActive ? 'Aktif' : 'Pending'}
+                        </span>
+                    </td>
+                    <td class="p-3 align-top">${menuHtml}</td>
+                    <td class="p-3 align-top text-center space-y-2">
+                        <button onclick="saveUserPermissions(${user.id})" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-medium transition shadow-xs">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Simpan Pengaturan
+                        </button>
+                        <button onclick="toggleActiveStatus(${user.id}, ${isActive})" class="w-full px-3 py-1.5 rounded text-xs font-medium text-white ${isActive ? 'bg-rose-500 hover:bg-rose-600' : 'bg-emerald-600 hover:bg-emerald-700'} transition shadow-xs">
+                            ${isActive ? 'Kunci Akun' : 'Setujui Akun'}
+                        </button>
+                        <button onclick="deleteUser(${user.id})" class="w-full text-rose-500 hover:bg-rose-50 border border-rose-200 py-1.5 rounded text-xs transition font-medium" title="Hapus Permanen">
+                            <i class="fa-solid fa-trash me-1"></i> Hapus
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function saveUserPermissions(userId) {
+            const user = allUsersData.find(u => u.id === userId);
+            if (!user) return;
+
+            let newPermissions = {};
+            menuList.forEach(m => {
+                const selectEl = document.getElementById(`perm_${userId}_${m.key}`);
+                if (selectEl) newPermissions[m.key] = selectEl.value;
+            });
+
+            const { error } = await supabaseClient
+                .from('users_login')
+                .update({ menu_permissions: newPermissions })
+                .eq('id', userId);
+
+            if (error) {
+                showAlert('Gagal menyimpan pengaturan: ' + error.message, false);
+                return;
+            }
+            user.menu_permissions = newPermissions;
+            showAlert('Pengaturan Role Berhasil Disimpan!', true);
+        }
+
+        async function toggleActiveStatus(id, currentStatus) {
+            const newStatus = !currentStatus;
+            const { error } = await supabaseClient
+                .from('users_login')
+                .update({ is_active: newStatus })
+                .eq('id', id);
+
+            if (error) {
+                showAlert('Gagal mengubah status: ' + error.message, false);
+                return;
+            }
+            showAlert(newStatus ? 'Akun berhasil disetujui & diaktifkan!' : 'Akun berhasil dikunci!', true);
+            loadUsersData();
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Yakin ingin menghapus akun ini dari database?')) return;
+            
+            const { error } = await supabaseClient
+                .from('users_login')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                showAlert('Gagal menghapus pengguna: ' + error.message, false);
+                return;
+            }
+            
+            showAlert('Pengguna berhasil dihapus dari sistem.', true);
+            loadUsersData();
+        }
+
+        function filterUsers() {
+            const keyword = document.getElementById('search-user').value.toLowerCase();
+            const filtered = allUsersData.filter(u => 
+                (u.nama_petugas && u.nama_petugas.toLowerCase().includes(keyword)) || 
+                (u.username && u.username.toLowerCase().includes(keyword)) ||
+                (u.idsppg && u.idsppg.toLowerCase().includes(keyword))
+            );
+            renderTable(filtered);
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const isAdmin = await cekAdminAccess();
+            if (isAdmin) loadUsersData();
+        });
+    </script>
+</body>
+</html>

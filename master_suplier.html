@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Suplier</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
+        .card { border: 1px solid #e2e8f0; border-radius: 0.5rem; }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Header Halaman & Tombol Aksi -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Data Master Suplier</h4>
+            <p class="text-muted small mb-0">Kelola data mitra suplier, alamat, dan informasi rekening bank</p>
+        </div>
+        <div>
+            <!-- Tombol Hapus Masal (Soft Delete) -->
+            <button class="btn btn-outline-danger btn-sm me-2" id="btnHapusMasal" onclick="hapusDataMasal()" disabled>
+                <i class="bi bi-trash3 me-1"></i> Hapus Terpilih (<span id="countTerpilih">0</span>)
+            </button>
+            <!-- Tombol Tambah Suplier -->
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahSuplier">
+                <i class="bi bi-plus-lg me-1"></i> Tambah Suplier
+            </button>
+        </div>
+    </div>
+
+    <!-- Kotak Pencarian & Filter Bar -->
+    <div class="card shadow-sm bg-white mb-3">
+        <div class="card-body py-3">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="inputPencarian" placeholder="Cari berdasarkan nama suplier atau ID suplier..." onkeyup="filterDataSuplier()">
+                <button class="btn btn-outline-secondary" type="button" onclick="resetPencarian()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabel Data Suplier -->
+    <div class="card shadow-sm bg-white">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle small">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40" class="text-center">
+                                <input type="checkbox" class="form-check-input" id="checkAll" onclick="pilihSemuaBaris(this)">
+                            </th>
+                            <th>No</th>
+                            <th>ID Suplier</th>
+                            <th>ID SPPG</th>
+                            <th>Nama Suplier</th>
+                            <th>Kontak / Telp</th>
+                            <th>Wilayah / Alamat</th>
+                            <th>Info Rekening Bank</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableSuplierBody">
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">Memuat data dari database...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH SUPLIER -->
+    <div class="modal fade" id="modalTambahSuplier" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-shop me-2 text-primary"></i>Tambah Master Suplier Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formTambahSuplier">
+                        <div class="row g-3">
+                            <!-- Identitas -->
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">ID Suplier</label>
+                                <input type="text" class="form-control form-control-sm" id="idsuplier" required placeholder="Contoh: SUP-01">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">ID SPPG</label>
+                                <input type="text" class="form-control form-control-sm" id="idsppg" placeholder="ID SPPG Terkait">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Nama Suplier</label>
+                                <input type="text" class="form-control form-control-sm" id="namasuplier" required placeholder="Nama Toko / CV / PT">
+                            </div>
+
+                            <!-- Alamat & Wilayah -->
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Alamat</label>
+                                <input type="text" class="form-control form-control-sm" id="alamat" placeholder="Alamat singkat">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Alamat Lengkap</label>
+                                <textarea class="form-control form-control-sm" id="alamatlengkap" rows="2" placeholder="Alamat lengkap lokasi suplier"></textarea>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Desa</label>
+                                <input type="text" class="form-control form-control-sm" id="desa">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Kecamatan</label>
+                                <input type="text" class="form-control form-control-sm" id="kecamatan">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Kabupaten</label>
+                                <input type="text" class="form-control form-control-sm" id="kabupaten">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Propinsi</label>
+                                <input type="text" class="form-control form-control-sm" id="propinsi">
+                            </div>
+
+                            <!-- Kontak & Perbankan -->
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">No. Telepon</label>
+                                <input type="text" class="form-control form-control-sm" id="nomortelp">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Nama Bank</label>
+                                <input type="text" class="form-control form-control-sm" id="namabank" placeholder="BCA / Mandiri / dll">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Nomor Rekening</label>
+                                <input type="text" class="form-control form-control-sm" id="nomorrekening">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Nama di Rekening</label>
+                                <input type="text" class="form-control form-control-sm" id="namadirekening">
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-end">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btnSimpanSuplier">Simpan Data</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CDN JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Panggil File Supabase JS Terpusat -->
+    <script src="js/supabase.js"></script>
+
+    <script>
+        let semuaDataSuplier = [];
+
+        // 1. Fungsi Ambil Data dari Supabase (Read dengan Soft Delete Filter)
+        async function fetchSuplierData() {
+            const tbody = document.getElementById('tableSuplierBody');
+            
+            const { data, error } = await _supabase
+                .from('master_suplier')
+                .select('*')
+                .is('deleted_at', null)
+                .order('idsuplier', { ascending: false });
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
+                return;
+            }
+
+            semuaDataSuplier = data || [];
+            tampilkanDataKeTabel(semuaDataSuplier);
+        }
+
+        // 2. Fungsi Render / Tampilkan Data ke Tabel HTML
+        function tampilkanDataKeTabel(data) {
+            const tbody = document.getElementById('tableSuplierBody');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data suplier yang ditemukan.</td></tr>`;
+                updateTombolHapusMasal();
+                return;
+            }
+
+            let html = '';
+            data.forEach((item, index) => {
+                html += `
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input check-item" value="${item.idsuplier}" onchange="updateTombolHapusMasal()">
+                        </td>
+                        <td>${index + 1}</td>
+                        <td><span class="badge bg-light text-dark border">${item.idsuplier || '-'}</span></td>
+                        <td>${item.idsppg || '-'}</td>
+                        <td class="fw-semibold">${item.namasuplier || '-'}</td>
+                        <td>${item.nomortelp || '-'}</td>
+                        <td>${item.kabupaten || '-'}<br><small class="text-muted">${item.alamat || '-'}</small></td>
+                        <td><small><b>Bank:</b> ${item.namabank || '-'}<br><b>No. Rek:</b> ${item.nomorrekening || '-'}<br><b>A/N:</b> ${item.namadirekening || '-'}</small></td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-danger" onclick="hapusSuplier('${item.idsuplier}')" title="Hapus Data">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            updateTombolHapusMasal();
+        }
+
+        // 3. Fungsi Filter / Pencarian Berdasarkan Nama Suplier & ID Suplier
+        function filterDataSuplier() {
+            const keyword = document.getElementById('inputPencarian').value.toLowerCase();
+            const hasilFilter = semuaDataSuplier.filter(item => {
+                const nmsup = (item.namasuplier || '').toLowerCase();
+                const idsup = (item.idsuplier || '').toLowerCase();
+
+                return nmsup.includes(keyword) || idsup.includes(keyword);
+            });
+            tampilkanDataKeTabel(hasilFilter);
+        }
+
+        function resetPencarian() {
+            document.getElementById('inputPencarian').value = '';
+            tampilkanDataKeTabel(semuaDataSuplier);
+        }
+
+        // 4. Fitur Pilih Semua (Check All)
+        function pilihSemuaBaris(masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.check-item');
+            checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+            updateTombolHapusMasal();
+        }
+
+        // 5. Update Status Tombol Hapus Masal
+        function updateTombolHapusMasal() {
+            const checkboxes = document.querySelectorAll('.check-item:checked');
+            const btnHapus = document.getElementById('btnHapusMasal');
+            const countSpan = document.getElementById('countTerpilih');
+            
+            countSpan.textContent = checkboxes.length;
+            if (checkboxes.length > 0) {
+                btnHapus.removeAttribute('disabled');
+            } else {
+                btnHapus.setAttribute('disabled', 'true');
+                document.getElementById('checkAll').checked = false;
+            }
+        }
+
+        // 6. Fungsi Hapus Satuan (Soft Delete)
+        async function hapusSuplier(idsuplier) {
+            if (confirm('Yakin ingin menghapus data suplier ini?')) {
+                const waktuHapus = new Date().toISOString();
+                const { error } = await _supabase
+                    .from('master_suplier')
+                    .update({ 
+                        deleted_at: waktuHapus, 
+                        deleted_by: 'Admin' 
+                    })
+                    .eq('idsuplier', idsuplier);
+
+                if (error) {
+                    alert('Gagal menghapus: ' + error.message);
+                } else {
+                    fetchSuplierData();
+                }
+            }
+        }
+
+        // 7. Fungsi Hapus Masal (Bulk Soft Delete)
+        async function hapusDataMasal() {
+            const checkboxes = document.querySelectorAll('.check-item:checked');
+            const idsToDelete = Array.from(checkboxes).map(cb => cb.value);
+
+            if (idsToDelete.length === 0) return;
+
+            if (confirm(`Yakin ingin menghapus ${idsToDelete.length} data suplier yang dipilih?`)) {
+                const waktuHapus = new Date().toISOString();
+                const { error } = await _supabase
+                    .from('master_suplier')
+                    .update({ 
+                        deleted_at: waktuHapus, 
+                        deleted_by: 'Admin' 
+                    })
+                    .in('idsuplier', idsToDelete);
+
+                if (error) {
+                    alert('Gagal menghapus data masal: ' + error.message);
+                } else {
+                    document.getElementById('checkAll').checked = false;
+                    fetchSuplierData();
+                }
+            }
+        }
+
+        // 8. Fungsi Simpan Data Baru ke Supabase (Create)
+        document.getElementById('formTambahSuplier').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSimpanSuplier');
+            btn.disabled = true;
+            btn.textContent = 'Menyimpan...';
+
+            const payload = {
+                idsuplier: document.getElementById('idsuplier').value,
+                idsppg: document.getElementById('idsppg').value,
+                namasuplier: document.getElementById('namasuplier').value,
+                alamat: document.getElementById('alamat').value,
+                alamatlengkap: document.getElementById('alamatlengkap').value,
+                desa: document.getElementById('desa').value,
+                kecamatan: document.getElementById('kecamatan').value,
+                kabupaten: document.getElementById('kabupaten').value,
+                propinsi: document.getElementById('propinsi').value,
+                nomortelp: document.getElementById('nomortelp').value,
+                namabank: document.getElementById('namabank').value,
+                nomorrekening: document.getElementById('nomorrekening').value,
+                namadirekening: document.getElementById('namadirekening').value,
+                create_by: 'Admin'
+            };
+
+            const { error } = await _supabase.from('master_suplier').insert([payload]);
+
+            if (error) {
+                alert('Gagal menyimpan: ' + error.message);
+            } else {
+                // Tutup Modal dan Reset Form
+                const modalEl = document.getElementById('modalTambahSuplier');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                document.getElementById('formTambahSuplier').reset();
+                
+                // Refresh Data Tabel
+                fetchSuplierData();
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Simpan Data';
+        });
+
+        // Jalankan pemanggilan data saat halaman dibuka
+        fetchSuplierData();
+    </script>
+</body>
+</html>

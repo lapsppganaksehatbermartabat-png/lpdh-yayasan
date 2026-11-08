@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login & Pendaftaran - Sistem SPPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <!-- HEADER -->
+        <div id="login-header" class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-slate-800">Login Sistem SPPG</h2>
+            <p class="text-sm text-slate-500 mt-1">Silakan masuk menggunakan akun terdaftar</p>
+        </div>
+
+        <div id="alert-box" class="hidden mb-4 p-3 rounded-lg text-sm text-center"></div>
+
+        <!-- FORM LOGIN -->
+        <form id="form-login" class="space-y-4" onsubmit="handleLogin(event)">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <input type="email" id="login-email" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="nama@email.com">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <div class="relative">
+                    <input type="password" id="login-password" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none pr-10" placeholder="********">
+                    <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none">
+                        <i id="eye-icon" class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <button type="submit" id="btn-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition">Masuk</button>
+            
+            <div class="text-center mt-4">
+                <button type="button" onclick="toggleForm('register')" class="text-sm text-blue-600 hover:underline">Belum punya akun? Daftar di sini</button>
+            </div>
+        </form>
+
+        <!-- FORM REGISTER -->
+        <form id="form-register" class="space-y-4 hidden" onsubmit="handleRegister(event)">
+            <h3 class="text-lg font-bold text-slate-800 text-center mb-2">Pendaftaran Akun Baru</h3>
+            <p class="text-xs text-amber-600 bg-amber-50 p-2 rounded text-center mb-2">Akun baru memerlukan persetujuan Super User sebelum dapat digunakan.</p>
+            
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">ID SPPG</label>
+                <input type="text" id="reg-idsppg" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Cth: VJVW3C8J">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap</label>
+                <input type="text" id="reg-nama" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Nama lengkap petugas">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Tugas / Jabatan</label>
+                <select id="reg-jabatan" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <option value="">-- Pilih Jabatan --</option>
+                    <option value="Kepala SPPG">Kepala SPPG</option>
+                    <option value="PLO Keuangan">PLO Keuangan</option>
+                    <option value="PIC Yayasan">PIC Yayasan</option>
+                    <option value="Asisten Lapangan">Asisten Lapangan</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Email Baru</label>
+                <input type="email" id="reg-email" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="nama@email.com">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <input type="password" id="reg-password" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Minimal 6 karakter">
+            </div>
+            
+            <button type="submit" id="btn-register" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 rounded-lg transition">Kirim Pendaftaran</button>
+            
+            <div class="text-center mt-4">
+                <button type="button" onclick="toggleForm('login')" class="text-sm text-slate-600 hover:underline">Sudah punya akun? Kembali ke Login</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- SCRIPT LOGIKA -->
+    <script>
+        const SUPABASE_URL = 'https://qpdbfnwxqbkqoqwfcaqg.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwZGJmbnd4cWJrcW9xd2ZjYXFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzMDU2MzksImV4cCI6MjEwODg4MTYzOX0.es9VI3nOYYSKlH_4xedXRYpY_v6RYh0adirWsEcMqsQ'; 
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function showAlert(message, isSuccess = false) {
+            const box = document.getElementById('alert-box');
+            box.className = `mb-4 p-3 rounded-lg text-sm text-center ${isSuccess ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`;
+            box.innerText = message;
+            box.classList.remove('hidden');
+        }
+
+        function toggleForm(type) {
+            document.getElementById('alert-box').classList.add('hidden');
+            if (type === 'register') {
+                document.getElementById('form-login').classList.add('hidden');
+                document.getElementById('form-register').classList.remove('hidden');
+                document.getElementById('login-header').innerHTML = `<h2 class="text-2xl font-bold text-slate-800">Pendaftaran Akun</h2><p class="text-sm text-slate-500 mt-1">Daftarkan akun operasional SPPG</p>`;
+            } else {
+                document.getElementById('form-register').classList.add('hidden');
+                document.getElementById('form-login').classList.remove('hidden');
+                document.getElementById('login-header').innerHTML = `<h2 class="text-2xl font-bold text-slate-800">Login Sistem SPPG</h2><p class="text-sm text-slate-500 mt-1">Silakan masuk menggunakan Email terdaftar</p>`;
+            }
+        }
+
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('login-password');
+            const eyeIcon = document.getElementById('eye-icon');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        // ==========================================
+        // LOGIN FLOW (HYBRID SIGN-IN)
+        // ==========================================
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            const btn = document.getElementById('btn-submit');
+
+            btn.disabled = true;
+            btn.innerText = 'Memeriksa Akun...';
+
+            try {
+                const { data: userData, error: userError } = await supabaseClient
+                    .from('users_login')
+                    .select('*')
+                    .eq('username', email)
+                    .single();
+
+                if (userError || !userData) {
+                    showAlert('Login Gagal: Email tidak terdaftar.');
+                    btn.disabled = false;
+                    btn.innerText = 'Masuk';
+                    return;
+                }
+
+                if (userData.password !== password && userData.password !== '[PROTECTED]') {
+                    showAlert('Login Gagal: Email atau password salah.');
+                    btn.disabled = false;
+                    btn.innerText = 'Masuk';
+                    return;
+                }
+
+                const role = String(userData.role_access || '').toLowerCase();
+                const jabatan = String(userData.jabatan || '').toLowerCase();
+                const isSuper = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super');
+                const isActive = userData.is_active === true || userData.is_active === 'true' || userData.is_active === 1;
+
+                if (!isActive && !isSuper) {
+                    showAlert('Akun Belum aktif, silahkan hubungi admin');
+                    btn.disabled = false;
+                    btn.innerText = 'Masuk';
+                    return;
+                }
+
+                await supabaseClient.auth.signInWithPassword({ email, password }).catch(() => {});
+
+                // SIMPAN KE SESSION STORAGE AGAR AMAN DAN HANCUR SAAT TAB DITUTUP
+                sessionStorage.setItem('sppg_user', JSON.stringify(userData));
+                window.location.replace('main.html');
+
+            } catch (err) {
+                console.error(err);
+                showAlert('Terjadi kesalahan pada sistem.');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Masuk';
+            }
+        }
+
+        // ==========================================
+        // REGISTER FLOW
+        // ==========================================
+        async function handleRegister(event) {
+            event.preventDefault();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value.trim();
+            const idsppg = document.getElementById('reg-idsppg').value.trim();
+            const nama_petugas = document.getElementById('reg-nama').value.trim();
+            const jabatan = document.getElementById('reg-jabatan').value;
+            const btn = document.getElementById('btn-register');
+
+            if (!idsppg || !email || !password || !nama_petugas || !jabatan) {
+                showAlert('Semua kolom wajib diisi!');
+                return;
+            }
+
+            btn.disabled = true; 
+            btn.innerText = 'Memproses Pendaftaran...';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('users_login')
+                    .insert([{
+                        idsppg: idsppg,
+                        nama_petugas: nama_petugas,
+                        jabatan: jabatan,
+                        username: email,
+                        password: password,
+                        role_access: 'viewer',
+                        is_active: false
+                    }]);
+
+                if (error) {
+                    showAlert('Gagal mendaftar: ' + error.message);
+                    btn.disabled = false;
+                    btn.innerText = 'Kirim Pendaftaran';
+                    return;
+                }
+
+                await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: { data: { nama_petugas: nama_petugas } }
+                }).catch(() => {});
+
+                showAlert('Pendaftaran berhasil! Akun Anda menunggu persetujuan Super User.', true);
+                document.getElementById('form-register').reset();
+                setTimeout(() => toggleForm('login'), 3000);
+
+            } catch (err) {
+                console.error(err);
+                showAlert('Terjadi kesalahan koneksi sistem.');
+            } finally {
+                btn.disabled = false; 
+                btn.innerText = 'Kirim Pendaftaran';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master PM (Kelompok Penerima Manfaat)</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
+        .card { border: 1px solid #e2e8f0; border-radius: 0.5rem; }
+        .bg-kalem-kecil { background-color: #eff6ff !important; border: 1px solid #bfdbfe !important; }
+        .bg-kalem-besar { background-color: #fdf4ff !important; border: 1px solid #f5d0fe !important; }
+        .bg-kalem-total { background-color: #f0fdf4 !important; border: 1px solid #bbf7d0 !important; }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Header Halaman & Tombol Aksi -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Data Master Kelompok Penerima Manfaat (PM)</h4>
+            <p class="text-muted small mb-0">Kelola kuota penerima manfaat, klasifikasi instansi, dan rincian paket</p>
+        </div>
+        <div>
+            <!-- Tombol Hapus Masal (Soft Delete) -->
+            <button class="btn btn-outline-danger btn-sm me-2" id="btnHapusMasal" onclick="hapusDataMasal()" disabled>
+                <i class="bi bi-trash3 me-1"></i> Hapus Terpilih (<span id="countTerpilih">0</span>)
+            </button>
+            <!-- Tombol Tambah PM -->
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahPM">
+                <i class="bi bi-plus-lg me-1"></i> Tambah PM
+            </button>
+        </div>
+    </div>
+
+    <!-- Kotak Pencarian & Filter Bar -->
+    <div class="card shadow-sm bg-white mb-3">
+        <div class="card-body py-3">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="inputPencarian" placeholder="Cari berdasarkan Nama Kelompok PM atau ID KPM..." onkeyup="filterDataPM()">
+                <button class="btn btn-outline-secondary" type="button" onclick="resetPencarian()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabel Data PM -->
+    <div class="card shadow-sm bg-white">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle small">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40" class="text-center">
+                                <input type="checkbox" class="form-check-input" id="checkAll" onclick="pilihSemuaBaris(this)">
+                            </th>
+                            <th>No</th>
+                            <th>ID KPM</th>
+                            <th>ID SPPG</th>
+                            <th>Nama Kelompok PM</th>
+                            <th>Klasifikasi Instansi</th>
+                            <th>Paket Kecil / Besar</th>
+                            <th>Total Kuota</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablePMBody">
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">Memuat data dari database...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH PM -->
+    <div class="modal fade" id="modalTambahPM" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-people me-2 text-primary"></i>Tambah Kelompok Penerima Manfaat Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formTambahPM">
+                        <div class="row g-3">
+                            <!-- Identitas Dasar (ID KPM otomatis terisi) -->
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">ID KPM (Otomatis)</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="idkpm" readonly placeholder="Auto Generated">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">ID SPPG</label>
+                                <input type="text" class="form-control form-control-sm" id="idspppg" placeholder="ID SPPG Terkait">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nama Kelompok Penerima Manfaat</label>
+                                <input type="text" class="form-control form-control-sm" id="NamaKelompokPenerimamanfaat" required placeholder="Nama Sekolah / Posyandu / Komunitas">
+                            </div>
+
+                            <!-- Klasifikasi Instansi (Dropdown) & Harga Terkunci -->
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Klasifikasi Instansi</label>
+                                <select class="form-select form-select-sm" id="klasifikasiinstansi" required>
+                                    <option value="" selected disabled>-- Pilih Klasifikasi Instansi --</option>
+                                    <option value="PAUD">PAUD</option>
+                                    <option value="TK">TK</option>
+                                    <option value="SD">SD</option>
+                                    <option value="SMP">SMP</option>
+                                    <option value="SMA">SMA</option>
+                                    <option value="Posyandu">Posyandu</option>
+                                    <option value="Lainnya">Lainnya</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Harga Paket Kecil (Rp)</label>
+                                <input type="number" class="form-control form-control-sm bg-light" id="hrgapaketkecil" value="8000" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Harga Paket Besar (Rp)</label>
+                                <input type="number" class="form-control form-control-sm bg-light" id="hrgapaketbesar" value="10000" readonly>
+                            </div>
+
+                            <hr class="my-2">
+                            <h6 class="text-primary fw-bold fs-7 mb-0">Rincian Jumlah / Kuota Sasaran:</h6>
+
+                            <!-- Kategori Kuota -->
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">Balita</label>
+                                <input type="number" class="form-control form-control-sm kuota-input" id="balita" value="0" oninput="hitungOtomatis()">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">TK / Paud</label>
+                                <input type="number" class="form-control form-control-sm kuota-input" id="TK_Paud" value="0" oninput="hitungOtomatis()">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">Kelas 1 - 3</label>
+                                <input type="number" class="form-control form-control-sm kuota-input" id="Kelas1_3" value="0" oninput="hitungOtomatis()">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">PTK / Kader Kecil</label>
+                                <input type="number" class="form-control form-control-sm kuota-input" id="PTK_Kaderkecil" value="0" oninput="hitungOtomatis()">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">Kelas 4 - 6</label>
+                                <input type="number" class="form-control form-control-sm kuota-input" id="Kelas4_6" value="0" oninput="hitungOtomatis()">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">SMP</label>
+                                <input type="number" class="form-control form-control-sm kuota-input" id="smp" value="0" oninput="hitungOtomatis()">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">SMA</label>
+                                <input type="number" class="form-control form-control-sm kuota-input" id="sma" value="0" oninput="hitungOtomatis()">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">Bumil (Ibu Hamil)</label>
+                                <input type="number" class="form-control form-control-sm kuota-input" id="bumil" value="0" oninput="hitungOtomatis()">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">Busui (Ibu Menyusui)</label>
+                                <input type="number" class="form-control form-control-sm kuota-input" id="busui" value="0" oninput="hitungOtomatis()">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-muted">PTK / Kader Besar</label>
+                                <input type="number" class="form-control form-control-sm kuota-input" id="PTK_Kaderbesar" value="0" oninput="hitungOtomatis()">
+                            </div>
+
+                            <hr class="my-2">
+
+                            <!-- Hasil Kalkulasi Sejajar dengan Warna Kalem -->
+                            <div class="col-md-4">
+                                <div class="p-3 rounded bg-kalem-kecil shadow-sm">
+                                    <small class="text-primary d-block fw-semibold mb-1"><i class="bi bi-calculator me-1"></i>Kelompok Kecil</small>
+                                    <span id="labelKecil" class="fw-bold fs-5 text-dark">0</span> <small class="text-muted">Orang</small>
+                                    <div class="extra-small text-muted mt-1" style="font-size: 11px;">(Balita + TK + Kelas 1-3 + PTK Kecil)</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 rounded bg-kalem-besar shadow-sm">
+                                    <small class="text-purple d-block fw-semibold mb-1" style="color: #9333ea;"><i class="bi bi-calculator me-1"></i>Kelompok Besar</small>
+                                    <span id="labelBesar" class="fw-bold fs-5 text-dark">0</span> <small class="text-muted">Orang</small>
+                                    <div class="extra-small text-muted mt-1" style="font-size: 11px;">(Kelas 4-6 + SMP + SMA + Bumil + Busui + PTK Besar)</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 rounded bg-kalem-total shadow-sm">
+                                    <small class="text-success d-block fw-semibold mb-1"><i class="bi bi-check-circle me-1"></i>Total Keseluruhan</small>
+                                    <span id="labelJumlah" class="fw-bold fs-5 text-success">0</span> <small class="text-muted">Orang</small>
+                                    <div class="extra-small text-muted mt-1" style="font-size: 11px;">(Kelompok Kecil + Kelompok Besar)</div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="mt-4 text-end">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btnSimpanPM">Simpan Data</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETAIL PM -->
+    <div class="modal fade" id="modalDetailPM" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold fs-6 text-primary"><i class="bi bi-info-circle me-2"></i>Detail Kelompok Penerima Manfaat</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 small">
+                        <div class="col-md-4">
+                            <span class="text-muted d-block">ID KPM</span>
+                            <strong id="det-idkpm">-</strong>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="text-muted d-block">ID SPPG</span>
+                            <strong id="det-idspppg">-</strong>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="text-muted d-block">Klasifikasi Instansi</span>
+                            <strong id="det-klasifikasi">-</strong>
+                        </div>
+                        <div class="col-12">
+                            <span class="text-muted d-block">Nama Kelompok PM</span>
+                            <strong class="fs-6 text-dark" id="det-namapm">-</strong>
+                        </div>
+
+                        <hr class="my-1">
+                        <h6 class="text-primary fw-bold fs-7 mb-0">Rincian Kuota Sasaran:</h6>
+
+                        <div class="col-md-3"><span>Balita:</span> <b class="float-end" id="det-balita">0</b></div>
+                        <div class="col-md-3"><span>TK / Paud:</span> <b class="float-end" id="det-tk">0</b></div>
+                        <div class="col-md-3"><span>Kelas 1 - 3:</span> <b class="float-end" id="det-kelas13">0</b></div>
+                        <div class="col-md-3"><span>PTK Kecil:</span> <b class="float-end" id="det-ptkkecil">0</b></div>
+
+                        <div class="col-md-3"><span>Kelas 4 - 6:</span> <b class="float-end" id="det-kelas46">0</b></div>
+                        <div class="col-md-3"><span>SMP:</span> <b class="float-end" id="det-smp">0</b></div>
+                        <div class="col-md-3"><span>SMA:</span> <b class="float-end" id="det-sma">0</b></div>
+                        <div class="col-md-3"><span>Bumil:</span> <b class="float-end" id="det-bumil">0</b></div>
+
+                        <div class="col-md-3"><span>Busui:</span> <b class="float-end" id="det-busui">0</b></div>
+                        <div class="col-md-3"><span>PTK Besar:</span> <b class="float-end" id="det-ptkbesar">0</b></div>
+
+                        <hr class="my-1">
+
+                        <div class="col-md-4">
+                            <div class="p-2 rounded bg-kalem-kecil text-center">
+                                <span class="d-block text-muted">Kelompok Kecil</span>
+                                <strong class="fs-6 text-primary" id="det-kecil">0</strong> Orang
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-2 rounded bg-kalem-besar text-center">
+                                <span class="d-block text-muted">Kelompok Besar</span>
+                                <strong class="fs-6 text-purple" id="det-besar">0</strong> Orang
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-2 rounded bg-kalem-total text-center">
+                                <span class="d-block text-muted">Total Keseluruhan</span>
+                                <strong class="fs-6 text-success" id="det-jumlah">0</strong> Orang
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CDN JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Panggil File Supabase JS Terpusat -->
+    <script src="js/supabase.js"></script>
+
+    <script>
+        let semuaDataPM = [];
+
+        // Generate ID KPM Otomatis saat Modal Dibuka
+        const modalTambahEl = document.getElementById('modalTambahPM');
+        modalTambahEl.addEventListener('show.bs.modal', function () {
+            const randomId = 'KPM-' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('idkpm').value = randomId;
+            document.getElementById('formTambahPM').reset();
+            document.getElementById('idkpm').value = randomId; 
+            document.getElementById('hrgapaketkecil').value = 8000;
+            document.getElementById('hrgapaketbesar').value = 10000;
+            hitungOtomatis();
+        });
+
+        // Kalkulasi Otomatis dan Penambahan PTK Kader
+        function hitungOtomatis() {
+            const balita = parseInt(document.getElementById('balita').value) || 0;
+            const tkPaud = parseInt(document.getElementById('TK_Paud').value) || 0;
+            const kelas13 = parseInt(document.getElementById('Kelas1_3').value) || 0;
+            const ptkKecil = parseInt(document.getElementById('PTK_Kaderkecil').value) || 0;
+            
+            const kelas46 = parseInt(document.getElementById('Kelas4_6').value) || 0;
+            const smp = parseInt(document.getElementById('smp').value) || 0;
+            const sma = parseInt(document.getElementById('sma').value) || 0;
+            const bumil = parseInt(document.getElementById('bumil').value) || 0;
+            const busui = parseInt(document.getElementById('busui').value) || 0;
+            const ptkBesar = parseInt(document.getElementById('PTK_Kaderbesar').value) || 0;
+
+            const totalKecil = balita + tkPaud + kelas13 + ptkKecil;
+            const totalBesar = kelas46 + smp + sma + bumil + busui + ptkBesar;
+            const totalSemua = totalKecil + totalBesar;
+
+            document.getElementById('labelKecil').textContent = totalKecil;
+            document.getElementById('labelBesar').textContent = totalBesar;
+            document.getElementById('labelJumlah').textContent = totalSemua;
+        }
+
+        // 1. Ambil Data dari Supabase (Read dengan Soft Delete Filter)
+        async function fetchPMData() {
+            const tbody = document.getElementById('tablePMBody');
+            
+            const { data, error } = await _supabase
+                .from('master_pm')
+                .select('*')
+                .is('deleted_at', null)
+                .order('id', { ascending: false });
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
+                return;
+            }
+
+            semuaDataPM = data || [];
+            tampilkanDataKeTabel(semuaDataPM);
+        }
+
+        // 2. Tampilkan Data ke Tabel HTML
+        function tampilkanDataKeTabel(data) {
+            const tbody = document.getElementById('tablePMBody');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data penerima manfaat yang ditemukan.</td></tr>`;
+                updateTombolHapusMasal();
+                return;
+            }
+
+            let html = '';
+            data.forEach((item, index) => {
+                const hargaKecil = item.hrgapaketkecil ? 'Rp ' + Number(item.hrgapaketkecil).toLocaleString('id-ID') : 'Rp 8.000';
+                const hargaBesar = item.hrgapaketbesar ? 'Rp ' + Number(item.hrgapaketbesar).toLocaleString('id-ID') : 'Rp 10.000';
+                
+                html += `
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input check-item" value="${item.idkpm}" onchange="updateTombolHapusMasal()">
+                        </td>
+                        <td>${index + 1}</td>
+                        <td><span class="badge bg-light text-dark border">${item.idkpm || '-'}</span></td>
+                        <td>${item.idspppg || '-'}</td>
+                        <td class="fw-semibold">
+                            <a href="javascript:void(0);" onclick='bukaDetailPM(${JSON.stringify(item)})' class="text-primary text-decoration-none" title="Klik untuk lihat detail">
+                                ${item.NamaKelompokPenerimamanfaat || '-'}
+                            </a>
+                        </td>
+                        <td><span class="badge bg-secondary">${item.klasifikasiinstansi || '-'}</span></td>
+                        <td><small><b>Kecil:</b> ${hargaKecil}<br><b>Besar:</b> ${hargaBesar}</small></td>
+                        <td class="fw-bold text-success">${item.jumlah || 0} Orang</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-danger" onclick="hapusPM('${item.idkpm}')" title="Hapus Data">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            updateTombolHapusMasal();
+        }
+
+        // Fungsi Membuka Modal Detail PM
+        function bukaDetailPM(item) {
+            document.getElementById('det-idkpm').textContent = item.idkpm || '-';
+            document.getElementById('det-idspppg').textContent = item.idspppg || '-';
+            document.getElementById('det-klasifikasi').textContent = item.klasifikasiinstansi || '-';
+            document.getElementById('det-namapm').textContent = item.NamaKelompokPenerimamanfaat || '-';
+
+            document.getElementById('det-balita').textContent = item.balita || 0;
+            document.getElementById('det-tk').textContent = item['TK/Paud'] || 0;
+            document.getElementById('det-kelas13').textContent = item['Kelas1-3'] || 0;
+            document.getElementById('det-ptkkecil').textContent = item['PTK/Kaderkecil'] || 0;
+
+            document.getElementById('det-kelas46').textContent = item['Kelas4-6'] || 0;
+            document.getElementById('det-smp').textContent = item.smp || 0;
+            document.getElementById('det-sma').textContent = item.sma || 0;
+            document.getElementById('det-bumil').textContent = item.bumil || 0;
+            document.getElementById('det-busui').textContent = item.busui || 0;
+            document.getElementById('det-ptkbesar').textContent = item['PTK/Kaderbesar'] || 0;
+
+            document.getElementById('det-kecil').textContent = item.kecil || 0;
+            document.getElementById('det-besar').textContent = item.besar || 0;
+            document.getElementById('det-jumlah').textContent = item.jumlah || 0;
+
+            const modalDetail = new bootstrap.Modal(document.getElementById('modalDetailPM'));
+            modalDetail.show();
+        }
+
+        // 3. Pencarian Berdasarkan Nama Kelompok / ID KPM
+        function filterDataPM() {
+            const keyword = document.getElementById('inputPencarian').value.toLowerCase();
+            const hasilFilter = semuaDataPM.filter(item => {
+                const nama = (item.NamaKelompokPenerimamanfaat || '').toLowerCase();
+                const idkpm = (item.idkpm || '').toLowerCase();
+
+                return nama.includes(keyword) || idkpm.includes(keyword);
+            });
+            tampilkanDataKeTabel(hasilFilter);
+        }
+
+        function resetPencarian() {
+            document.getElementById('inputPencarian').value = '';
+            tampilkanDataKeTabel(semuaDataPM);
+        }
+
+        // 4. Pilih Semua (Check All)
+        function pilihSemuaBaris(masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.check-item');
+            checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+            updateTombolHapusMasal();
+        }
+
+        // 5. Update Tombol Hapus Masal
+        function updateTombolHapusMasal() {
+            const checkboxes = document.querySelectorAll('.check-item:checked');
+            const btnHapus = document.getElementById('btnHapusMasal');
+            const countSpan = document.getElementById('countTerpilih');
+            
+            countSpan.textContent = checkboxes.length;
+            if (checkboxes.length > 0) {
+                btnHapus.removeAttribute('disabled');
+            } else {
+                btnHapus.setAttribute('disabled', 'true');
+                document.getElementById('checkAll').checked = false;
+            }
+        }
+
+        // 6. Soft Delete Satuan
+        async function hapusPM(idkpm) {
+            if (confirm('Yakin ingin menghapus data kelompok PM ini?')) {
+                const waktuHapus = new Date().toISOString();
+                const { error } = await _supabase
+                    .from('master_pm')
+                    .update({ 
+                        deleted_at: waktuHapus, 
+                        deleted_by: 'Admin' 
+                    })
+                    .eq('idkpm', idkpm);
+
+                if (error) {
+                    alert('Gagal menghapus: ' + error.message);
+                } else {
+                    fetchPMData();
+                }
+            }
+        }
+
+        // 7. Soft Delete Masal
+        async function hapusDataMasal() {
+            const checkboxes = document.querySelectorAll('.check-item:checked');
+            const idsToDelete = Array.from(checkboxes).map(cb => cb.value);
+
+            if (idsToDelete.length === 0) return;
+
+            if (confirm(`Yakin ingin menghapus ${idsToDelete.length} data kelompok PM yang dipilih?`)) {
+                const waktuHapus = new Date().toISOString();
+                const { error } = await _supabase
+                    .from('master_pm')
+                    .update({ 
+                        deleted_at: waktuHapus, 
+                        deleted_by: 'Admin' 
+                    })
+                    .in('idkpm', idsToDelete);
+
+                if (error) {
+                    alert('Gagal menghapus data masal: ' + error.message);
+                } else {
+                    document.getElementById('checkAll').checked = false;
+                    fetchPMData();
+                }
+            }
+        }
+
+        // 8. Simpan Data Baru (Create)
+        document.getElementById('formTambahPM').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSimpanPM');
+            btn.disabled = true;
+            btn.textContent = 'Menyimpan...';
+
+            const balita = parseInt(document.getElementById('balita').value) || 0;
+            const tkPaud = parseInt(document.getElementById('TK_Paud').value) || 0;
+            const kelas13 = parseInt(document.getElementById('Kelas1_3').value) || 0;
+            const ptkKecil = parseInt(document.getElementById('PTK_Kaderkecil').value) || 0;
+            
+            const kelas46 = parseInt(document.getElementById('Kelas4_6').value) || 0;
+            const smp = parseInt(document.getElementById('smp').value) || 0;
+            const sma = parseInt(document.getElementById('sma').value) || 0;
+            const bumil = parseInt(document.getElementById('bumil').value) || 0;
+            const busui = parseInt(document.getElementById('busui').value) || 0;
+            const ptkBesar = parseInt(document.getElementById('PTK_Kaderbesar').value) || 0;
+            
+            const totalKecil = balita + tkPaud + kelas13 + ptkKecil;
+            const totalBesar = kelas46 + smp + sma + bumil + busui + ptkBesar;
+            const totalSemua = totalKecil + totalBesar;
+
+            const payload = {
+                idkpm: document.getElementById('idkpm').value,
+                idspppg: document.getElementById('idspppg').value,
+                NamaKelompokPenerimamanfaat: document.getElementById('NamaKelompokPenerimamanfaat').value,
+                klasifikasiinstansi: document.getElementById('klasifikasiinstansi').value,
+                hrgapaketkecil: 8000,
+                hrgapaketbesar: 10000,
+                balita: balita,
+                "TK/Paud": tkPaud,
+                "Kelas1-3": kelas13,
+                "Kelas4-6": kelas46,
+                smp: smp,
+                sma: sma,
+                bumil: bumil,
+                busui: busui,
+                "PTK/Kaderkecil": ptkKecil,
+                "PTK/Kaderbesar": ptkBesar,
+                kecil: totalKecil,
+                besar: totalBesar,
+                jumlah: totalSemua,
+                create_by: 'Admin'
+            };
+
+            const { error } = await _supabase.from('master_pm').insert([payload]);
+
+            if (error) {
+                alert('Gagal menyimpan: ' + error.message);
+            } else {
+                const modalEl = document.getElementById('modalTambahPM');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                
+                fetchPMData();
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Simpan Data';
+        });
+
+        // Jalankan saat halaman dimuat
+        fetchPMData();
+    </script>
+</body>
+</html>

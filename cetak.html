@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cetak PO Barang SPPG</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            background-color: #f1f5f9;
+            color: #000;
+        }
+
+        /* Container Dokumen Cetak */
+        .page-container {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm 20mm;
+            margin: 20px auto;
+            background: #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            box-sizing: border-box;
+        }
+
+        /* Kop Surat Centered & Double Line */
+        .kop-header {
+            text-align: center;
+            border-bottom: 3px double #000;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+        .kop-nama-sppg {
+            font-size: 14pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .kop-detail {
+            font-size: 9.5pt;
+            line-height: 1.3;
+            color: #1e293b;
+        }
+
+        /* Info Suplier & PO Meta Table */
+        .meta-table {
+            width: 100%;
+            font-size: 9.5pt;
+            margin-bottom: 15px;
+        }
+        .meta-table td {
+            padding: 2px 4px;
+            vertical-align: top;
+        }
+
+        /* Judul Dokumen */
+        .doc-title {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: 700;
+            text-decoration: underline;
+            margin: 10px 0 15px 0;
+            text-transform: uppercase;
+        }
+
+        /* Tabel Item Barang PO */
+        .po-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9.5pt;
+            margin-bottom: 25px;
+        }
+        .po-table th, .po-table td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+        }
+        .po-table th {
+            background-color: #f8fafc !important;
+            text-align: center;
+            font-weight: 700;
+            -webkit-print-color-adjust: exact;
+        }
+
+        /* Tanda Tangan Footer */
+        .ttd-table {
+            width: 100%;
+            font-size: 9.5pt;
+            margin-top: 30px;
+            page-break-inside: avoid;
+        }
+        .ttd-table td {
+            text-align: center;
+            vertical-align: top;
+            width: 50%;
+        }
+
+        /* Sembunyikan Kontrol Input saat Cetak ke PDF */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+            body {
+                background: #fff;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .page-container {
+                box-shadow: none;
+                margin: 0;
+                width: 100%;
+                padding: 15mm 15mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CONTROL PANEL (TIDAK IKUT DICETAK) -->
+    <div class="container my-3 no-print">
+        <div class="card shadow-sm p-3 border-0">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Tanggal Awal</label>
+                    <input type="date" id="tglAwal" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Tanggal Akhir</label>
+                    <input type="date" id="tglAkhir" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Jenis Dokumen</label>
+                    <select id="jenisDokumen" class="form-select form-select-sm" onchange="muatDataPO()">
+                        <option value="po_barang" selected>PO Barang</option>
+                        <option value="bast">BAST</option>
+                        <option value="kuitansi">Kuitansi</option>
+                        <option value="maker">Maker</option>
+                        <option value="legger_relawan">Legger Gaji Relawan</option>
+                        <option value="legger_posyandu">Legger PIC Posyandu</option>
+                        <option value="legger_sekolah">Legger PIC Sekolah</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2 align-self-end">
+                    <button class="btn btn-primary btn-sm w-100 fw-semibold" onclick="muatDataPO()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Reload
+                    </button>
+                    <button class="btn btn-success btn-sm w-100 fw-semibold" onclick="window.print()">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Cetak PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Halaman Dokumen A4 PO BARANG -->
+    <div class="page-container" id="cetakArea">
+        
+        <!-- KOP SURAT (Diambil dari master_sppg) -->
+        <div class="kop-header">
+            <div class="kop-nama-sppg" id="kopNamaSPPG">SPPG CILACAP KEDUNGREJA CIKLAPA</div>
+            <div class="kop-detail" id="kopAlamat">Jalan Taklang RT/RW 06/06 Desa Ciklapa Kecamatan Kedungreja</div>
+            <div class="kop-detail" id="kopKabProv">Kabupaten Cilacap Jawa Tengah</div>
+            <div class="kop-detail" id="kopKontak">e-mail: dapursehatakbarsentosa1@gmail.com Telp. 0812-3456-7890</div>
+        </div>
+
+        <!-- HEADER META PO (KEPADA SUPLIER & NOMOR PO) -->
+        <table class="meta-table">
+            <tr>
+                <td style="width: 15%;"><strong>Kepada</strong></td>
+                <td style="width: 2%;">:</td>
+                <td style="width: 43%;" id="poKepadaSuplier">UD Berkah Bunda 2</td>
+                <td style="width: 10%;"><strong>No.</strong></td>
+                <td style="width: 2%;">:</td>
+                <td style="width: 28%;" id="poNomorSurat">PO/140/2356/XI/2026</td>
+            </tr>
+            <tr>
+                <td>Alamat</td>
+                <td>:</td>
+                <td id="poAlamatSuplier">Sidareja</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>No. Telp</td>
+                <td>:</td>
+                <td id="poTelpSuplier">0812-0987-6543</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+        </table>
+
+        <!-- JUDUL DOKUMEN -->
+        <div class="doc-title">Surat Pesanan</div>
+
+        <!-- TABEL BARANG (BODY) -->
+        <table class="po-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">No.</th>
+                    <th style="width: 45%;">Uraian</th>
+                    <th style="width: 12%;">Satuan</th>
+                    <th style="width: 10%;">Quantity</th>
+                    <th style="width: 13%;">Harga (Rp)</th>
+                    <th style="width: 15%;">Jumlah (Rp)</th>
+                </tr>
+            </thead>
+            <tbody id="poItemBody">
+                <!-- Baris contoh sesuai template -->
+                <tr><td class="text-center">1</td><td>Beras Premium</td><td class="text-center">Kg</td><td class="text-end">50</td><td class="text-end">14.000</td><td class="text-end">700.000</td></tr>
+                <tr><td class="text-center">2</td><td>Minyak Goreng</td><td class="text-center">Liter</td><td class="text-end">20</td><td class="text-end">16.000</td><td class="text-end">320.000</td></tr>
+                <tr><td class="text-center">3</td><td>Telur Ayam</td><td class="text-center">Kg</td><td class="text-end">15</td><td class="text-end">28.000</td><td class="text-end">420.000</td></tr>
+                <tr><td class="text-center">4</td><td>Daging Ayam Fillet</td><td class="text-center">Kg</td><td class="text-end">10</td><td class="text-end">38.000</td><td class="text-end">380.000</td></tr>
+                <tr><td class="text-center">5</td><td>Bumbu Dapur Lengkap</td><td class="text-center">Paket</td><td class="text-end">1</td><td class="text-end">150.000</td><td class="text-end">150.000</td></tr>
+                <tr><td class="text-center">6</td><td>Sayur Mayur Segar</td><td class="text-center">Paket</td><td class="text-end">1</td><td class="text-end">200.000</td><td class="text-end">200.000</td></tr>
+                <tr><td class="text-center">7</td><td>Buah Pisang Ambon</td><td class="text-center">Sisir</td><td class="text-end">10</td><td class="text-end">15.000</td><td class="text-end">150.000</td></tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="5" class="text-end fw-bold">Jumlah</td>
+                    <td class="text-end fw-bold" id="poGrandTotal">2.320.000</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- TANDA TANGAN FOOTER -->
+        <table class="ttd-table">
+            <tr>
+                <td>
+                    <div>Menyetujui</div>
+                    <div class="fw-bold">Kepala SPPG</div>
+                    <br><br><br>
+                    <div class="fw-bold text-decoration-underline" id="namaKepalaSPPG">Rasyid</div>
+                </td>
+                <td>
+                    <div id="tglCetakDokumen">Cilacap, 7 November 2026</div>
+                    <div class="fw-bold">PIC Yayasan / Mitra</div>
+                    <br><br><br>
+                    <div class="fw-bold text-decoration-underline" id="namaPicYayasan">Elminatun</div>
+                </td>
+            </tr>
+        </table>
+
+    </div>
+
+    <!-- SCRIPTS INTEGRASI SUPABASE -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('tglAwal').value = today;
+            document.getElementById('tglAkhir').value = today;
+            
+            muatDataPO();
+        });
+
+        async function muatDataPO() {
+            // 1. Load Kop Master SPPG
+            let { data: sppg } = await _supabase.from('master_sppg').select('*').limit(1).single();
+            if (sppg) {
+                document.getElementById('kopNamaSPPG').innerText = (sppg.namasppg || 'SPPG CILACAP KEDUNGREJA CIKLAPA').toUpperCase();
+                document.getElementById('kopAlamat').innerText = `${sppg.alamatsppg || ''} Desa ${sppg.desa || ''} Kecamatan ${sppg.kecamatan || ''}`;
+                document.getElementById('kopKabProv').innerText = `Kabupaten ${sppg.kabupaten || ''} ${sppg.propinsi || ''}`;
+                document.getElementById('kopKontak').innerText = `e-mail: ${sppg.email || ''} Telp. ${sppg.notelp || ''}`;
+            }
+
+            // 2. Load Item dari rab_bahan_baku sesuai tanggal
+            const tglAwal = document.getElementById('tglAwal').value;
+            const tglAkhir = document.getElementById('tglAkhir').value;
+
+            let { data: items } = await _supabase
+                .from('rab_bahan_baku')
+                .select('*')
+                .gte('tanggal', tglAwal)
+                .lte('tanggal', tglAkhir)
+                .is('deleted_at', null);
+
+            if (items && items.length > 0) {
+                let html = '';
+                let grandTotal = 0;
+                items.forEach((item, idx) => {
+                    let total = (parseFloat(item.jumlah) || 0) * (parseFloat(item.harga) || 0);
+                    grandTotal += total;
+                    html += `
+                        <tr>
+                            <td class="text-center">${idx + 1}</td>
+                            <td>${item.namabarang || item.uraian || '-'}</td>
+                            <td class="text-center">${item.satuan || 'Pcs'}</td>
+                            <td class="text-end">${Number(item.jumlah || 0).toLocaleString('id-ID')}</td>
+                            <td class="text-end">${Number(item.harga || 0).toLocaleString('id-ID')}</td>
+                            <td class="text-end">${Number(total).toLocaleString('id-ID')}</td>
+                        </tr>
+                    `;
+                });
+                document.getElementById('poItemBody').innerHTML = html;
+                document.getElementById('poGrandTotal').innerText = Number(grandTotal).toLocaleString('id-ID');
+            }
+        }
+    </script>
+</body>
+</html>

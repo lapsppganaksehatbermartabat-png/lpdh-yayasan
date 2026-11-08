@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maker Relawan</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            overflow-x: hidden;
+            font-weight: 400;
+        }
+
+        #content-wrapper {
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        .topbar {
+            height: 60px;
+            background-color: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 1.5rem;
+            position: sticky; top: 0; z-index: 999;
+        }
+
+        .card {
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 0.6rem;
+            overflow: hidden;
+        }
+
+        .table { color: #334155; margin-bottom: 0; }
+
+        .table > thead {
+            background-color: #e2e8f0 !important;
+            border-bottom: 2px solid #94a3b8 !important;
+        }
+
+        .table > thead th {
+            background-color: #e2e8f0 !important;
+            color: #0f172a !important;
+            padding: 0.85rem;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .badge-sppg {
+            background-color: #e6f4ea;
+            color: #137333;
+            border: 1px solid #ceead6;
+            font-weight: 600;
+            font-size: 0.78rem;
+            padding: 0.35em 0.65em;
+            border-radius: 0.375rem;
+        }
+
+        /* Panel Warna-Warni Ringkas (Kiri) */
+        .stat-card-compact {
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .stat-card-compact:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .stat-card-compact .stat-title {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.85;
+        }
+        .stat-card-compact .stat-value {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-top: 0.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="content-wrapper">
+        <header class="topbar">
+            <div class="fw-bold text-dark"><i class="bi bi-people-fill text-primary me-2"></i> Maker Relawan</div>
+            <div class="fw-semibold text-secondary small">Admin SPPG</div>
+        </header>
+
+        <main class="container-fluid p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                <div>
+                    <h4 class="fw-bold mb-1 text-dark">Maker Relawan</h4>
+                    <p class="text-muted small mb-0">Kelola Usulan, Maker, & Approval Pembayaran Honor Relawan</p>
+                </div>
+            </div>
+
+            <!-- GRID DUA KOLOM: PANEL RINGKAS (KIRI) & GRAFIK DONAT (KANAN) -->
+            <div class="row g-3 mb-4 align-items-stretch">
+                <!-- SEBELAH KIRI: PANEL STATISTIK RINGKAS (GRID 2x2) -->
+                <div class="col-lg-7">
+                    <div class="card h-100 shadow-sm bg-white p-3 border">
+                        <h6 class="fw-bold text-dark mb-3 small"><i class="bi bi-grid-fill text-primary me-2"></i>Ringkasan Nominal Honor Relawan</h6>
+                        <div class="row g-2">
+                            <!-- Belum Diusulkan -->
+                            <div class="col-6">
+                                <div class="stat-card-compact bg-secondary" onclick="filterByPanel('belum_usulan')" title="Klik untuk filter Belum Diusulkan">
+                                    <div class="stat-title">Belum Diusulkan</div>
+                                    <div class="stat-value" id="panelBelumUsulan">Rp 0</div>
+                                </div>
+                            </div>
+                            <!-- Diusulkan Maker -->
+                            <div class="col-6">
+                                <div class="stat-card-compact bg-warning text-dark" onclick="filterByPanel('dibuat_usulan')" title="Klik untuk filter Diusulkan">
+                                    <div class="stat-title">Diusulkan Maker</div>
+                                    <div class="stat-value" id="panelDiusulkanMaker">Rp 0</div>
+                                </div>
+                            </div>
+                            <!-- Sudah Maker -->
+                            <div class="col-6">
+                                <div class="stat-card-compact bg-primary" onclick="filterByPanel('sudah_maker')" title="Klik untuk filter Sudah Maker">
+                                    <div class="stat-title">Sudah Maker</div>
+                                    <div class="stat-value" id="panelSudahMaker">Rp 0</div>
+                                </div>
+                            </div>
+                            <!-- Sudah Aprove -->
+                            <div class="col-6">
+                                <div class="stat-card-compact bg-success" onclick="filterByPanel('sudah_aprove')" title="Klik untuk filter Sudah Aprove">
+                                    <div class="stat-title">Sudah Aprove</div>
+                                    <div class="stat-value" id="panelSudahAprove">Rp 0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEBELAH KANAN: GRAFIK DONAT -->
+                <div class="col-lg-5">
+                    <div class="card h-100 shadow-sm bg-white p-3 border d-flex flex-column align-items-center justify-content-center">
+                        <h6 class="fw-bold text-dark mb-2 small text-center w-100"><i class="bi bi-pie-chart-fill text-success me-2"></i>Proporsi Status Pembayaran</h6>
+                        <div style="position: relative; height: 160px; width: 100%; max-width: 320px;">
+                            <canvas id="donutChartStatus"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABEL UTAMA -->
+            <div class="card shadow-sm bg-white">
+                <div class="card-header bg-white py-3 border-bottom border-light d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <!-- Tombol Eksekusi Utama (Non-aktif jika belum pilih tanggal) -->
+                        <button id="btnBukaEksekusi" class="btn btn-success btn-sm px-3 shadow-sm fw-semibold" onclick="bukaFormEksekusi()" disabled title="Pilih tanggal terlebih dahulu untuk mengaktifkan">
+                            <i class="bi bi-lightning-charge-fill me-1"></i> Eksekusi
+                        </button>
+
+                        <!-- Dropdown Tanggal Dinamis -->
+                        <div class="input-group" style="max-width: 200px;">
+                            <span class="input-group-text bg-light small text-muted"><i class="bi bi-calendar-event"></i></span>
+                            <select id="filterTanggalSelect" class="form-select form-select-sm bg-light" onchange="terapkanFilter()">
+                                <option value="">Semua Tanggal</option>
+                            </select>
+                        </div>
+
+                        <!-- Search Box -->
+                        <div class="input-group" style="max-width: 250px;">
+                            <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="filterKeyword" class="form-control border-start-0 bg-light form-control-sm" placeholder="Cari uraian/suplier/relawan...">
+                        </div>
+                        
+                        <button class="btn btn-outline-secondary btn-sm" onclick="resetFilter()" title="Reset Filter"><i class="bi bi-arrow-counterclockwise"></i></button>
+                    </div>
+
+                    <!-- Total Rekap SUM Nominal -->
+                    <div class="text-end">
+                        <span class="text-muted small d-block" id="totalRecordInfo">Memuat data...</span>
+                        <h5 class="fw-bold text-success mb-0" id="totalSumNominal">Rp 0</h5>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 small">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;" class="text-center">#</th>
+                                    <th>ID SPPG</th>
+                                    <th>ID Barang</th>
+                                    <th>Tanggal</th>
+                                    <th>Uraian</th>
+                                    <th>Nama Suplier</th>
+                                    <th>Bank</th>
+                                    <th>No Rekening</th>
+                                    <th>Nama di Rekening</th>
+                                    <th class="text-end">Nominal (Rp)</th>
+                                    <th class="text-center">Status Usulan</th>
+                                    <th class="text-center">Status Maker</th>
+                                    <th class="text-center">Status Aprove</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelMaker">
+                                <tr><td colspan="13" class="text-center py-4 text-muted">Memuat data dari database...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL FORM EKSEKUSI -->
+    <div class="modal fade" id="modalEksekusi" tabindex="-1" aria-labelledby="modalEksekusiLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold fs-6 text-dark" id="modalEksekusiLabel"><i class="bi bi-gear-wide-connected me-2 text-primary"></i>Form Eksekusi Data Terfilter (Relawan)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">Berikut adalah data honor relawan yang sesuai dengan filter tanggal & pencarian Anda saat ini. Beri centang untuk mengeksekusi:</p>
+                    
+                    <!-- Tabel dengan Checkbox di Modal -->
+                    <div class="table-responsive border rounded bg-white mb-3" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm align-middle mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 35px;" class="text-center">
+                                        <input type="checkbox" id="checkAllModal" class="form-check-input" onclick="toggleSelectAllModal(this)">
+                                    </th>
+                                    <th>Tanggal</th>
+                                    <th>Uraian</th>
+                                    <th>Suplier</th>
+                                    <th class="text-end">Nominal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listCeklisModal">
+                                <tr><td colspan="5" class="text-center text-muted">Memuat data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Tombol Aksi Berjenjang -->
+                    <div class="p-3 bg-light rounded border text-center">
+                        <h6 class="fw-bold small text-secondary mb-3">Pilih Aksi Eksekusi Berjenjang untuk Baris Terpilih:</h6>
+                        <div class="d-flex justify-content-center gap-2 flex-wrap">
+                            <button type="button" class="btn btn-warning text-dark fw-semibold btn-sm px-3" id="btnAksiUsulan" onclick="prosesEksekusi('usulan')">
+                                <i class="bi bi-send me-1"></i> Ajukan Usulan
+                            </button>
+                            <button type="button" class="btn btn-primary fw-semibold btn-sm px-3" id="btnAksiMaker" onclick="prosesEksekusi('maker')">
+                                <i class="bi bi-check2-circle me-1"></i> Konfirmasi Maker
+                            </button>
+                            <button type="button" class="btn btn-success fw-semibold btn-sm px-3" id="btnAksiAprove" onclick="prosesEksekusi('aprove')">
+                                <i class="bi bi-shield-check me-1"></i> Approval
+                            </button>
+                        </div>
+                        <div class="form-text text-muted small mt-2">
+                            * Tombol akan otomatis menyesuaikan keaktifannya berdasarkan kelengkapan waktu sebelumnya.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/supabase.js"></script>
+
+    <script>
+        let globalMaker = [];
+        let filteredCurrentData = [];
+        let activePanelFilter = '';
+        let statusDonutChart = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDataMaker();
+
+            document.getElementById('filterKeyword').addEventListener('input', () => {
+                terapkanFilter();
+            });
+        });
+
+        async function loadDataMaker() {
+            const tbody = document.getElementById('tabelMaker');
+            let { data, error } = await _supabase
+                .from('maker_relawan')
+                .select('*')
+                .is('deleted_at', null)
+                .order('id', { ascending: false });
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
+                document.getElementById('totalRecordInfo').innerText = 'Error';
+                return;
+            }
+
+            globalMaker = data || [];
+            isiDropdownTanggal(globalMaker);
+            terapkanFilter();
+        }
+
+        function isiDropdownTanggal(dataList) {
+            const selectEl = document.getElementById('filterTanggalSelect');
+            const currentValue = selectEl.value;
+            selectEl.innerHTML = '<option value="">Semua Tanggal</option>';
+
+            const uniqueDates = [...new Set(dataList
+                .map(item => item.tanggal ? item.tanggal.split('T')[0] : null)
+                .filter(Boolean)
+            )].sort().reverse();
+
+            uniqueDates.forEach(tgl => {
+                const opt = document.createElement('option');
+                opt.value = tgl;
+                opt.innerText = new Date(tgl).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                selectEl.appendChild(opt);
+            });
+
+            selectEl.value = currentValue;
+        }
+
+        function filterByPanel(statusType) {
+            activePanelFilter = (activePanelFilter === statusType) ? '' : statusType;
+            terapkanFilter();
+        }
+
+        function terapkanFilter() {
+            const keyword = document.getElementById('filterKeyword').value.toLowerCase().trim();
+            const tglPilihan = document.getElementById('filterTanggalSelect').value;
+            const btnEksekusi = document.getElementById('btnBukaEksekusi');
+
+            if (!tglPilihan || tglPilihan === '') {
+                btnEksekusi.disabled = true;
+                btnEksekusi.title = 'Pilih tanggal terlebih dahulu untuk mengaktifkan tombol eksekusi';
+            } else {
+                btnEksekusi.disabled = false;
+                btnEksekusi.title = 'Klik untuk eksekusi data terfilter';
+            }
+
+            updatePanelStatistik(globalMaker, { keyword, tglPilihan });
+
+            filteredCurrentData = globalMaker.filter(item => {
+                const uraian = (item.uraian || '').toLowerCase();
+                const suplier = (item.namasuplier || '').toLowerCase();
+                const sppg = (item.idsppg || '').toLowerCase();
+                const barang = (item.idbarang || '').toLowerCase();
+
+                const matchKeyword = !keyword || 
+                    uraian.includes(keyword) || 
+                    suplier.includes(keyword) || 
+                    sppg.includes(keyword) ||
+                    barang.includes(keyword);
+
+                let matchTanggal = true;
+                if (tglPilihan) {
+                    const itemDate = item.tanggal ? item.tanggal.split('T')[0] : '';
+                    matchTanggal = (itemDate === tglPilihan);
+                }
+
+                let matchPanel = true;
+                if (activePanelFilter === 'dibuat_usulan') {
+                    matchPanel = item.waktuusulan && !item.waktumaker;
+                } else if (activePanelFilter === 'sudah_maker') {
+                    matchPanel = item.waktumaker && !item.waktuaprove;
+                } else if (activePanelFilter === 'sudah_aprove') {
+                    matchPanel = item.waktuaprove;
+                } else if (activePanelFilter === 'belum_usulan') {
+                    matchPanel = !item.waktuusulan;
+                }
+
+                return matchKeyword && matchTanggal && matchPanel;
+            });
+
+            renderTabelUtama(filteredCurrentData);
+        }
+
+        function updatePanelStatistik(dataList, filterContext) {
+            const baseList = dataList.filter(item => {
+                const uraian = (item.uraian || '').toLowerCase();
+                const suplier = (item.namasuplier || '').toLowerCase();
+                const sppg = (item.idsppg || '').toLowerCase();
+                const barang = (item.idbarang || '').toLowerCase();
+
+                const matchKeyword = !filterContext.keyword || 
+                    uraian.includes(filterContext.keyword) || 
+                    suplier.includes(filterContext.keyword) || 
+                    sppg.includes(filterContext.keyword) ||
+                    barang.includes(filterContext.keyword);
+
+                let matchTanggal = true;
+                if (filterContext.tglPilihan) {
+                    const itemDate = item.tanggal ? item.tanggal.split('T')[0] : '';
+                    matchTanggal = (itemDate === filterContext.tglPilihan);
+                }
+                return matchKeyword && matchTanggal;
+            });
+
+            let sumBelumUsulan = baseList.filter(i => !i.waktuusulan).reduce((s, i) => s + (parseFloat(i.nominal) || 0), 0);
+            let sumDiusulkan = baseList.filter(i => i.waktuusulan && !i.waktumaker).reduce((s, i) => s + (parseFloat(i.nominal) || 0), 0);
+            let sumMaker = baseList.filter(i => i.waktumaker && !i.waktuaprove).reduce((s, i) => s + (parseFloat(i.nominal) || 0), 0);
+            let sumAprove = baseList.filter(i => i.waktuaprove).reduce((s, i) => s + (parseFloat(i.nominal) || 0), 0);
+
+            document.getElementById('panelBelumUsulan').innerText = `Rp ${sumBelumUsulan.toLocaleString('id-ID')}`;
+            document.getElementById('panelDiusulkanMaker').innerText = `Rp ${sumDiusulkan.toLocaleString('id-ID')}`;
+            document.getElementById('panelSudahMaker').innerText = `Rp ${sumMaker.toLocaleString('id-ID')}`;
+            document.getElementById('panelSudahAprove').innerText = `Rp ${sumAprove.toLocaleString('id-ID')}`;
+
+            renderGrafikDonut(sumBelumUsulan, sumDiusulkan, sumMaker, sumAprove);
+        }
+
+        function renderGrafikDonut(belum, usulan, maker, aprove) {
+            const ctx = document.getElementById('donutChartStatus').getContext('2d');
+            
+            if (statusDonutChart) {
+                statusDonutChart.destroy();
+            }
+
+            statusDonutChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Belum Diusulkan', 'Diusulkan Maker', 'Sudah Maker', 'Sudah Aprove'],
+                    datasets: [{
+                        data: [belum, usulan, maker, aprove],
+                        backgroundColor: ['#6c757d', '#ffc107', '#0d6efd', '#198754'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 10, family: 'Inter' }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let val = context.raw || 0;
+                                    return ` ${context.label}: Rp ${val.toLocaleString('id-ID')}`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        function resetFilter() {
+            document.getElementById('filterKeyword').value = '';
+            document.getElementById('filterTanggalSelect').value = '';
+            activePanelFilter = '';
+            terapkanFilter();
+        }
+
+        function renderTabelUtama(dataList) {
+            const tbody = document.getElementById('tabelMaker');
+            const totalInfo = document.getElementById('totalRecordInfo');
+            const totalSumEl = document.getElementById('totalSumNominal');
+
+            if (!dataList || dataList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-4">Tidak ada data maker relawan yang sesuai.</td></tr>`;
+                totalInfo.innerText = '0 transaksi';
+                totalSumEl.innerText = 'Rp 0';
+                return;
+            }
+
+            let grandTotal = dataList.reduce((sum, item) => sum + (parseFloat(item.nominal) || 0), 0);
+
+            totalInfo.innerText = `Menampilkan ${dataList.length} baris`;
+            totalSumEl.innerText = `Rp ${grandTotal.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+            tbody.innerHTML = '';
+            dataList.forEach((item, idx) => {
+                let tgl = item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+                let nominal = Number(item.nominal || 0).toLocaleString('id-ID');
+
+                let badgeUsulan = item.statususulan ? `<span class="badge bg-warning text-dark">${item.statususulan}</span>` : '<span class="badge bg-light text-muted border">-</span>';
+                let badgeMaker = item.statusmaker ? `<span class="badge bg-primary">${item.statusmaker}</span>` : '<span class="badge bg-light text-muted border">-</span>';
+                let badgeAprove = item.statusaprove ? `<span class="badge bg-success">${item.statusaprove}</span>` : '<span class="badge bg-light text-muted border">-</span>';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="text-center text-secondary">${idx + 1}</td>
+                        <td><span class="badge-sppg">${item.idsppg || '-'}</span></td>
+                        <td><span class="badge bg-light text-dark border">${item.idbarang || '-'}</span></td>
+                        <td class="small">${tgl}</td>
+                        <td class="fw-semibold text-dark">${item.uraian || '-'}</td>
+                        <td class="fw-semibold text-secondary">${item.namasuplier || '-'}</td>
+                        <td class="small">${item.namabank || '-'}</td>
+                        <td class="small">${item.norekening || '-'}</td>
+                        <td class="small">${item.namadirekening || '-'}</td>
+                        <td class="text-end fw-bold text-success">Rp ${nominal}</td>
+                        <td class="text-center">${badgeUsulan}</td>
+                        <td class="text-center">${badgeMaker}</td>
+                        <td class="text-center">${badgeAprove}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // ==========================================
+        // FORM EKSEKUSI & VALIDASI BERJENJANG
+        // ==========================================
+
+        function bukaFormEksekusi() {
+            const tglPilihan = document.getElementById('filterTanggalSelect').value;
+            if (!tglPilihan || tglPilihan === '') {
+                alert('Silakan pilih tanggal terlebih dahulu pada filter tanggal di atas!');
+                return;
+            }
+
+            document.getElementById('checkAllModal').checked = false;
+            const listCeklisBody = document.getElementById('listCeklisModal');
+            listCeklisBody.innerHTML = '';
+
+            if (!filteredCurrentData || filteredCurrentData.length === 0) {
+                listCeklisBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tidak ada data yang sesuai dengan filter saat ini.</td></tr>`;
+                return;
+            }
+
+            filteredCurrentData.forEach(item => {
+                let tglItem = item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+                listCeklisBody.innerHTML += `
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input row-checkbox-modal" 
+                                   value="${item.id}" 
+                                   data-waktuusulan="${item.waktuusulan || ''}" 
+                                   data-waktumaker="${item.waktumaker || ''}" 
+                                   data-waktuaprove="${item.waktuaprove || ''}" 
+                                   onchange="updateStatusTombolEksekusi()">
+                        </td>
+                        <td class="small">${tglItem}</td>
+                        <td class="fw-semibold">${item.uraian || '-'}</td>
+                        <td>${item.namasuplier || '-'}</td>
+                        <td class="text-end fw-bold text-success">Rp ${Number(item.nominal || 0).toLocaleString('id-ID')}</td>
+                    </tr>
+                `;
+            });
+
+            updateStatusTombolEksekusi();
+
+            let myModal = new bootstrap.Modal(document.getElementById('modalEksekusi'));
+            myModal.show();
+        }
+
+        function toggleSelectAllModal(masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.row-checkbox-modal');
+            checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+            updateStatusTombolEksekusi();
+        }
+
+        function updateStatusTombolEksekusi() {
+            const selectedCheckboxes = document.querySelectorAll('.row-checkbox-modal:checked');
+            
+            const btnUsulan = document.getElementById('btnAksiUsulan');
+            const btnMaker = document.getElementById('btnAksiMaker');
+            const btnAprove = document.getElementById('btnAksiAprove');
+
+            if (selectedCheckboxes.length === 0) {
+                btnUsulan.disabled = true;
+                btnMaker.disabled = true;
+                btnAprove.disabled = true;
+                return;
+            }
+
+            let bisaUsulan = true;
+            let bisaMaker = true;
+            let bisaAprove = true;
+
+            selectedCheckboxes.forEach(cb => {
+                let wUsulan = cb.dataset.waktuusulan;
+                let wMaker = cb.dataset.waktumaker;
+                let wAprove = cb.dataset.waktuaprove;
+
+                if (wUsulan) bisaUsulan = false;
+                if (!wUsulan || wMaker) bisaMaker = false;
+                if (!wMaker || wAprove) bisaAprove = false;
+            });
+
+            btnUsulan.disabled = !bisaUsulan;
+            btnMaker.disabled = !bisaMaker;
+            btnAprove.disabled = !bisaAprove;
+        }
+
+        async function prosesEksekusi(tahap) {
+            const selectedCheckboxes = document.querySelectorAll('.row-checkbox-modal:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert('Pilih minimal satu data!');
+                return;
+            }
+
+            const idsTerpilih = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value, 10));
+            const waktuSekarang = new Date().toISOString();
+            let updatePayload = {
+                edit_at: waktuSekarang,
+                edit_by: 'Admin'
+            };
+
+            if (tahap === 'usulan') {
+                updatePayload.waktuusulan = waktuSekarang;
+                updatePayload.statususulan = 'Sudah Diusulkan';
+            } else if (tahap === 'maker') {
+                updatePayload.waktumaker = waktuSekarang;
+                updatePayload.statusmaker = 'Sudah Maker';
+            } else if (tahap === 'aprove') {
+                updatePayload.waktuaprove = waktuSekarang;
+                updatePayload.statusaprove = 'Sudah Aprove';
+            }
+
+            let { error } = await _supabase
+                .from('maker_relawan')
+                .update(updatePayload)
+                .in('id', idsTerpilih);
+
+            if (error) {
+                alert('Gagal mengeksekusi data: ' + error.message);
+                return;
+            }
+
+            let modalEl = document.getElementById('modalEksekusi');
+            bootstrap.Modal.getInstance(modalEl).hide();
+
+            loadDataMaker();
+            alert('Eksekusi berhasil diperbarui!');
+        }
+    </script>
+</body>
+</html>

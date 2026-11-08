@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Barang</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
+        .card { border: 1px solid #e2e8f0; border-radius: 0.5rem; }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Header Halaman & Tombol Aksi -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Data Master Barang</h4>
+            <p class="text-muted small mb-0">Kelola katalog bahan baku, harga satuan, dan suplier</p>
+        </div>
+        <div>
+            <!-- Tombol Hapus Masal -->
+            <button class="btn btn-outline-danger btn-sm me-2" id="btnHapusMasal" onclick="hapusDataMasal()" disabled>
+                <i class="bi bi-trash3 me-1"></i> Hapus Terpilih (<span id="countTerpilih">0</span>)
+            </button>
+            <!-- Tombol Tambah Barang -->
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahBarang" onclick="bukaModalTambah()">
+                <i class="bi bi-plus-lg me-1"></i> Tambah Barang
+            </button>
+        </div>
+    </div>
+
+    <!-- Kotak Pencarian & Filter Bar -->
+    <div class="card shadow-sm bg-white mb-3">
+        <div class="card-body py-3">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="inputPencarian" placeholder="Cari berdasarkan nama barang atau nama suplier..." onkeyup="filterDataBarang()">
+                <button class="btn btn-outline-secondary" type="button" onclick="resetPencarian()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabel Data Barang -->
+    <div class="card shadow-sm bg-white">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle small">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40" class="text-center">
+                                <input type="checkbox" class="form-check-input" id="checkAll" onclick="pilihSemuaBaris(this)">
+                            </th>
+                            <th>No</th>
+                            <th>ID Barang</th>
+                            <th>ID SPPG</th>
+                            <th>Nama Barang</th>
+                            <th>Kategori</th>
+                            <th>Satuan</th>
+                            <th>Harga Satuan</th>
+                            <th>Tgl Update Harga</th>
+                            <th>Suplier</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBarangBody">
+                        <tr>
+                            <td colspan="11" class="text-center text-muted py-4">Memuat data dari database...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH BARANG -->
+    <div class="modal fade" id="modalTambahBarang" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-box-seam me-2 text-primary"></i>Tambah Master Barang Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formTambahBarang">
+                        <div class="row g-3">
+                            <!-- Identitas Barang -->
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">ID Barang (Otomatis)</label>
+                                <input type="number" class="form-control form-control-sm bg-light" id="idbarang" readonly required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">ID SPPG</label>
+                                <input type="text" class="form-control form-control-sm" id="idsppg" placeholder="ID SPPG Terkait">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nama Barang</label>
+                                <input type="text" class="form-control form-control-sm" id="namabarang" required placeholder="Nama bahan/barang">
+                            </div>
+
+                            <!-- Dropdown Dinamis dari Database -->
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Jenis Belanja</label>
+                                <select class="form-select form-select-sm" id="jenisbelanja" required>
+                                    <option value="">Pilih Jenis Belanja...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Kategori Bahan</label>
+                                <select class="form-select form-select-sm" id="kategoribahan" required>
+                                    <option value="">Pilih Kategori Bahan...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Kategori LPDH</label>
+                                <select class="form-select form-select-sm" id="kategorilpdh" required>
+                                    <option value="">Pilih Kategori LPDH...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Satuan</label>
+                                <input type="text" class="form-control form-control-sm" id="satuan" placeholder="Kg / Liter / Pcs">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Harga Satuan (Rp)</label>
+                                <input type="number" class="form-control form-control-sm" id="hargasatuan" placeholder="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Tanggal Update Harga</label>
+                                <input type="date" class="form-control form-control-sm" id="tanggalupdateharga">
+                            </div>
+                            <!-- Nama Suplier Dropdown -->
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Nama Suplier</label>
+                                <select class="form-select form-select-sm" id="namasuplier" onchange="pilihSuplier(this)" required>
+                                    <option value="">Pilih Suplier...</option>
+                                </select>
+                            </div>
+
+                            <!-- Informasi Suplier & Bank (Otomatis Terisi) -->
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Alamat Lengkap Suplier</label>
+                                <textarea class="form-control form-control-sm bg-light" id="alamatlengkap" rows="2" readonly placeholder="Otomatis terisi dari suplier"></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">No. Telepon Suplier</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="nomortelp" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Nama Bank</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="namabank" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Nomor Rekening</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="nomorrekening" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nama di Rekening</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="namadirekening" readonly>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-end">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btnSimpanBarang">Simpan Data</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CDN JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Panggil File Supabase JS Terpusat -->
+    <script src="js/supabase.js"></script>
+
+    <script>
+        let semuaDataBarang = [];
+        let dataMasterSuplier = [];
+
+        // 1. Fungsi Ambil Data dari Supabase (Read)
+        async function fetchBarangData() {
+            const tbody = document.getElementById('tableBarangBody');
+            
+            const { data, error } = await _supabase
+                .from('master_barang')
+                .select('*')
+                .is('deleted_at', null)
+                .order('idbarang', { ascending: false });
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
+                return;
+            }
+
+            semuaDataBarang = data || [];
+            tampilkanDataKeTabel(semuaDataBarang);
+            populateDropdownsFromData(semuaDataBarang);
+        }
+
+        // 2. Load Data Suplier & Populate Dropdown Dinamis
+        async function loadDropdownData() {
+            const { data: suplierData } = await _supabase
+                .from('master_suplier')
+                .select('*')
+                .is('deleted_at', null);
+
+            dataMasterSuplier = suplierData || [];
+            const selectSuplier = document.getElementById('namasuplier');
+            selectSuplier.innerHTML = '<option value="">Pilih Suplier...</option>';
+            dataMasterSuplier.forEach(sup => {
+                const opt = document.createElement('option');
+                opt.value = sup.namasuplier;
+                opt.textContent = sup.namasuplier;
+                selectSuplier.appendChild(opt);
+            });
+        }
+
+        function populateDropdownsFromData(data) {
+            const jenisSet = new Set();
+            const bahanSet = new Set();
+            const lpdhSet = new Set();
+
+            data.forEach(item => {
+                if (item.jenisbelanja) jenisSet.add(item.jenisbelanja.trim());
+                if (item.kategoribahan) bahanSet.add(item.kategoribahan.trim());
+                if (item.kategorilpdh) lpdhSet.add(item.kategorilpdh.trim());
+            });
+
+            isiDropdownSelect('jenisbelanja', Array.from(jenisSet));
+            isiDropdownSelect('kategoribahan', Array.from(bahanSet));
+            isiDropdownSelect('kategorilpdh', Array.from(lpdhSet));
+        }
+
+        function isiDropdownSelect(elementId, arrayData) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const currentValue = el.value;
+            el.innerHTML = `<option value="">Pilih...</option>`;
+            arrayData.sort().forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item;
+                opt.textContent = item;
+                el.appendChild(opt);
+            });
+            el.value = currentValue;
+        }
+
+        // 3. Generate ID Barang Angka Bulat Otomatis (+1 dari terbesar)
+        async function generateIdBarang() {
+            const { data, error } = await _supabase
+                .from('master_barang')
+                .select('idbarang')
+                .order('idbarang', { ascending: false })
+                .limit(1);
+
+            let nextId = 1;
+            if (!error && data && data.length > 0 && data[0].idbarang !== null) {
+                let lastId = parseInt(data[0].idbarang) || 0;
+                nextId = lastId + 1;
+            }
+            document.getElementById('idbarang').value = nextId;
+        }
+
+        // 4. Ketika Suplier Dipilih, Otomatis Isi Kolom di Bawahnya
+        function pilihSuplier(selectEl) {
+            const selectedName = selectEl.value;
+            const found = dataMasterSuplier.find(s => s.namasuplier === selectedName);
+
+            if (found) {
+                document.getElementById('alamatlengkap').value = found.alamatlengkap || found.alamat || '';
+                document.getElementById('nomortelp').value = found.nomortelp || '';
+                document.getElementById('namabank').value = found.namabank || '';
+                document.getElementById('nomorrekening').value = found.nomorrekening || '';
+                document.getElementById('namadirekening').value = found.namadirekening || '';
+            } else {
+                document.getElementById('alamatlengkap').value = '';
+                document.getElementById('nomortelp').value = '';
+                document.getElementById('namabank').value = '';
+                document.getElementById('nomorrekening').value = '';
+                document.getElementById('namadirekening').value = '';
+            }
+        }
+
+        function bukaModalTambah() {
+            document.getElementById('formTambahBarang').reset();
+            generateIdBarang();
+            document.getElementById('tanggalupdateharga').valueAsDate = new Date();
+        }
+
+        // 5. Fungsi Render / Tampilkan Data ke Tabel HTML
+        function tampilkanDataKeTabel(data) {
+            const tbody = document.getElementById('tableBarangBody');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">Tidak ada data barang yang ditemukan.</td></tr>`;
+                updateTombolHapusMasal();
+                return;
+            }
+
+            let html = '';
+            data.forEach((item, index) => {
+                const hargaFormat = item.hargasatuan ? 'Rp ' + Number(item.hargasatuan).toLocaleString('id-ID') : '-';
+                const tglUpdate = item.tanggalupdateharga ? item.tanggalupdateharga : '-';
+                html += `
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input check-item" value="${item.idbarang}" onchange="updateTombolHapusMasal()">
+                        </td>
+                        <td>${index + 1}</td>
+                        <td><span class="badge bg-light text-dark border">${item.idbarang || '-'}</span></td>
+                        <td>${item.idsppg || '-'}</td>
+                        <td class="fw-semibold">${item.namabarang || '-'}</td>
+                        <td>${item.kategoribahan || '-'}</td>
+                        <td>${item.satuan || '-'}</td>
+                        <td class="text-success fw-semibold">${hargaFormat}</td>
+                        <td><small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${tglUpdate}</small></td>
+                        <td>${item.namasuplier || '-'}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-danger" onclick="hapusBarang(${item.idbarang})" title="Hapus Data">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            updateTombolHapusMasal();
+        }
+
+        // 6. Fungsi Filter / Pencarian
+        function filterDataBarang() {
+            const keyword = document.getElementById('inputPencarian').value.toLowerCase();
+            const hasilFilter = semuaDataBarang.filter(item => {
+                const nmbrg = (item.namabarang || '').toLowerCase();
+                const sup = (item.namasuplier || '').toLowerCase();
+
+                return nmbrg.includes(keyword) || sup.includes(keyword);
+            });
+            tampilkanDataKeTabel(hasilFilter);
+        }
+
+        function resetPencarian() {
+            document.getElementById('inputPencarian').value = '';
+            tampilkanDataKeTabel(semuaDataBarang);
+        }
+
+        // 7. Fitur Pilih Semua (Check All)
+        function pilihSemuaBaris(masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.check-item');
+            checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+            updateTombolHapusMasal();
+        }
+
+        // 8. Update Status Tombol Hapus Masal
+        function updateTombolHapusMasal() {
+            const checkboxes = document.querySelectorAll('.check-item:checked');
+            const btnHapus = document.getElementById('btnHapusMasal');
+            const countSpan = document.getElementById('countTerpilih');
+            
+            countSpan.textContent = checkboxes.length;
+            if (checkboxes.length > 0) {
+                btnHapus.removeAttribute('disabled');
+            } else {
+                btnHapus.setAttribute('disabled', 'true');
+                document.getElementById('checkAll').checked = false;
+            }
+        }
+
+        // 9. Fungsi Hapus Satuan (Soft Delete)
+        async function hapusBarang(idbarang) {
+            if (confirm('Yakin ingin menghapus data barang ini?')) {
+                const waktuHapus = new Date().toISOString();
+                const { error } = await _supabase
+                    .from('master_barang')
+                    .update({ 
+                        deleted_at: waktuHapus, 
+                        deleted_by: 'Admin' 
+                    })
+                    .eq('idbarang', idbarang);
+
+                if (error) {
+                    alert('Gagal menghapus: ' + error.message);
+                } else {
+                    fetchBarangData();
+                }
+            }
+        }
+
+        // 10. Fungsi Hapus Masal (Bulk Delete)
+        async function hapusDataMasal() {
+            const checkboxes = document.querySelectorAll('.check-item:checked');
+            const idsToDelete = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            if (idsToDelete.length === 0) return;
+
+            if (confirm(`Yakin ingin menghapus ${idsToDelete.length} data barang yang dipilih?`)) {
+                const waktuHapus = new Date().toISOString();
+                const { error } = await _supabase
+                    .from('master_barang')
+                    .update({ 
+                        deleted_at: waktuHapus, 
+                        deleted_by: 'Admin' 
+                    })
+                    .in('idbarang', idsToDelete);
+
+                if (error) {
+                    alert('Gagal menghapus data masal: ' + error.message);
+                } else {
+                    document.getElementById('checkAll').checked = false;
+                    fetchBarangData();
+                }
+            }
+        }
+
+        // 11. Fungsi Simpan Data Baru ke Supabase (Create) - idbarang dikonversi ke integer
+        document.getElementById('formTambahBarang').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSimpanBarang');
+            btn.disabled = true;
+            btn.textContent = 'Menyimpan...';
+
+            try {
+                const payload = {
+                    idbarang: parseInt(document.getElementById('idbarang').value) || 1, // Pastikan berupa angka bulat
+                    idsppg: document.getElementById('idsppg').value,
+                    namabarang: document.getElementById('namabarang').value,
+                    jenisbelanja: document.getElementById('jenisbelanja').value,
+                    kategoribahan: document.getElementById('kategoribahan').value,
+                    kategorilpdh: document.getElementById('kategorilpdh').value,
+                    satuan: document.getElementById('satuan').value,
+                    hargasatuan: document.getElementById('hargasatuan').value ? parseFloat(document.getElementById('hargasatuan').value) : null,
+                    tanggalupdateharga: document.getElementById('tanggalupdateharga').value || null,
+                    namasuplier: document.getElementById('namasuplier').value,
+                    alamatlengkap: document.getElementById('alamatlengkap').value,
+                    nomortelp: document.getElementById('nomortelp').value,
+                    namabank: document.getElementById('namabank').value,
+                    nomorrekening: document.getElementById('nomorrekening').value,
+                    namadirekening: document.getElementById('namadirekening').value,
+                    create_by: 'Admin'
+                };
+
+                const { error } = await _supabase.from('master_barang').insert([payload]);
+
+                if (error) throw error;
+
+                const modalEl = document.getElementById('modalTambahBarang');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                fetchBarangData();
+
+            } catch (err) {
+                console.error('Gagal simpan:', err);
+                alert('Gagal menyimpan ke database: ' + (err.message || JSON.stringify(err)));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Simpan Data';
+            }
+        });
+
+        loadDropdownData();
+        fetchBarangData();
+    </script>
+</body>
+</html>

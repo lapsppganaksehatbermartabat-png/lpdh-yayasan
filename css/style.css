@@ -1,0 +1,195 @@
+/* Lokasi file: css/style.css */
+
+:root {
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 70px;
+    --topbar-height: 60px;
+    --primary-color: #0284c7;
+    --primary-hover: #0369a1;
+    --bg-main: #f8fafc;
+    --border-color: #e2e8f0;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-main);
+    color: #334155;
+    overflow-x: hidden;
+}
+
+/* Sidebar Styling */
+#sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--sidebar-width);
+    background-color: #ffffff;
+    border-right: 1px solid var(--border-color);
+    transition: all 0.3s ease-in-out;
+    z-index: 1000;
+}
+
+#sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+}
+
+#sidebar .sidebar-header {
+    height: var(--topbar-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#sidebar.collapsed .sidebar-header h5 span,
+#sidebar.collapsed .sidebar-menu span,
+#sidebar.collapsed .sidebar-menu .menu-header {
+    display: none;
+}
+
+#sidebar .sidebar-menu {
+    list-style: none;
+    padding: 0.75rem;
+    margin: 0;
+    max-height: calc(100vh - var(--topbar-height));
+    overflow-y: auto;
+}
+
+/* Custom Scrollbar untuk Sidebar */
+#sidebar .sidebar-menu::-webkit-scrollbar {
+    width: 4px;
+}
+#sidebar .sidebar-menu::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+#sidebar .sidebar-menu li {
+    margin-bottom: 0.2rem;
+}
+
+#sidebar .sidebar-menu .menu-header {
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+}
+
+#sidebar .sidebar-menu a {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0.85rem;
+    color: #64748b;
+    text-decoration: none;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+#sidebar .sidebar-menu a:hover, 
+#sidebar .sidebar-menu a.active {
+    color: var(--primary-color);
+    background-color: #f0f9ff;
+    font-weight: 500;
+}
+
+#sidebar .sidebar-menu a i {
+    font-size: 1.1rem;
+    min-width: 28px;
+    text-align: center;
+}
+
+/* Main Content Area */
+#content-wrapper {
+    margin-left: var(--sidebar-width);
+    transition: all 0.3s ease-in-out;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#sidebar.collapsed ~ #content-wrapper {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
+/* Topbar Styling */
+.topbar {
+    height: var(--topbar-height);
+    background-color: #ffffff;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    flex-shrink: 0;
+}
+
+/* Iframe Frame */
+#contentFrame {
+    width: 100%;
+    height: calc(100vh - var(--topbar-height));
+    border: none;
+    background: var(--bg-main);
+}
+
+/* Global Cards & Tables */
+.card {
+    border: 1px solid var(--border-color) !important;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.table > :not(caption) > * > * {
+    padding: 0.75rem 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #sidebar {
+        margin-left: calc(-1 * var(--sidebar-width));
+    }
+    #sidebar.mobile-show {
+        margin-left: 0;
+    }
+    #content-wrapper {
+        margin-left: 0 !important;
+    }
+}
+
+/* Tambahan Styling untuk Menu Accordion / Dropdown Sidebar */
+#sidebar .sidebar-menu a.nav-dropdown-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+#sidebar .sidebar-menu .submenu-container {
+    padding-left: 1.5rem;
+    background-color: #f8fafc;
+    border-radius: 0.375rem;
+    margin-top: 0.1rem;
+    margin-bottom: 0.2rem;
+}
+
+#sidebar .sidebar-menu .submenu-container li a {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+#sidebar .sidebar-menu .submenu-container li a:hover,
+#sidebar .sidebar-menu .submenu-container li a.active {
+    color: var(--primary-color);
+    background-color: transparent;
+    font-weight: 600;
+}
+
+/* Animasi Putar Panah saat Dropdown Dibuka */
+#sidebar .sidebar-menu a.nav-dropdown-toggle .toggle-icon {
+    transition: transform 0.2s ease-in-out;
+}
+#sidebar .sidebar-menu a.nav-dropdown-toggle[aria-expanded="true"] .toggle-icon {
+    transform: rotate(180deg);
+}

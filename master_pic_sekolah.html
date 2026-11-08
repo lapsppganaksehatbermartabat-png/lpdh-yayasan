@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master PIC Sekolah</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
+        .card { border: 1px solid #e2e8f0; border-radius: 0.5rem; }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Header Halaman & Tombol Aksi -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Data Master PIC Sekolah</h4>
+            <p class="text-muted small mb-0">Kelola data PIC Sekolah, penugasan, gaji, informasi perbankan, dan status keaktifan</p>
+        </div>
+        <div>
+            <!-- Tombol Hapus Masal (Soft Delete) -->
+            <button class="btn btn-outline-danger btn-sm me-2" id="btnHapusMasal" onclick="hapusDataMasal()" disabled>
+                <i class="bi bi-trash3 me-1"></i> Hapus Terpilih (<span id="countTerpilih">0</span>)
+            </button>
+            <!-- Tombol Tambah PIC Sekolah -->
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahPicSekolah">
+                <i class="bi bi-plus-lg me-1"></i> Tambah PIC Sekolah
+            </button>
+        </div>
+    </div>
+
+    <!-- Kotak Pencarian & Filter Bar -->
+    <div class="card shadow-sm bg-white mb-3">
+        <div class="card-body py-3">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="inputPencarian" placeholder="Cari berdasarkan Nama PIC Sekolah, ID PIC, atau Tugas..." onkeyup="filterDataPicSekolah()">
+                <button class="btn btn-outline-secondary" type="button" onclick="resetPencarian()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabel Data PIC Sekolah -->
+    <div class="card shadow-sm bg-white">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle small">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40" class="text-center">
+                                <input type="checkbox" class="form-check-input" id="checkAll" onclick="pilihSemuaBaris(this)">
+                            </th>
+                            <th>No</th>
+                            <th>ID PIC Sekolah</th>
+                            <th>ID SPPG</th>
+                            <th>Nama PIC Sekolah</th>
+                            <th>Tugas & Salary</th>
+                            <th>Kontak / Telp</th>
+                            <th>Status</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablePicSekolahBody">
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">Memuat data dari database...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH PIC SEKOLAH -->
+    <div class="modal fade" id="modalTambahPicSekolah" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-person-badge me-2 text-primary"></i>Tambah Master PIC Sekolah Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formTambahPicSekolah">
+                        <div class="row g-3">
+                            <!-- Identitas -->
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">ID PIC Sekolah (Otomatis)</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="idpicsekolah" readonly placeholder="Auto Generated">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">ID SPPG</label>
+                                <input type="text" class="form-control form-control-sm" id="idsppg" placeholder="ID SPPG Terkait">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">NIK</label>
+                                <input type="text" class="form-control form-control-sm" id="nik" placeholder="Nomor Induk Kependudukan">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nama PIC Sekolah</label>
+                                <input type="text" class="form-control form-control-sm" id="namapicsekolah" required placeholder="Nama Lengkap PIC Sekolah">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Tugas</label>
+                                <input type="text" class="form-control form-control-sm" id="tugas" placeholder="Contoh: Penanggung Jawab">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Salary / Gaji (Rp)</label>
+                                <input type="number" class="form-control form-control-sm" id="salary" value="0">
+                            </div>
+
+                            <!-- Alamat & Wilayah -->
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Alamat Singkat</label>
+                                <input type="text" class="form-control form-control-sm" id="alamat" placeholder="Alamat jalan / RT-RW">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Alamat Lengkap</label>
+                                <textarea class="form-control form-control-sm" id="alamatlengkap" rows="2" placeholder="Alamat domisili lengkap"></textarea>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Desa</label>
+                                <input type="text" class="form-control form-control-sm" id="desa">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Kecamatan</label>
+                                <input type="text" class="form-control form-control-sm" id="kecamatan">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Kabupaten</label>
+                                <input type="text" class="form-control form-control-sm" id="kabupaten">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Propinsi</label>
+                                <input type="text" class="form-control form-control-sm" id="propinsi">
+                            </div>
+
+                            <!-- Kontak, Penugasan & Perbankan -->
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">No. Telepon / WhatsApp</label>
+                                <input type="text" class="form-control form-control-sm" id="nomortelp">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Tanggal Mulai Tugas</label>
+                                <input type="date" class="form-control form-control-sm" id="tanggalmulaitugas">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Tanggal Selesai Tugas</label>
+                                <input type="date" class="form-control form-control-sm" id="tanggalselesaitugas">
+                                <small class="text-muted" style="font-size: 10px;">Kosongkan jika masih Aktif</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Nama Bank</label>
+                                <input type="text" class="form-control form-control-sm" id="namabank" placeholder="BCA / Mandiri / dll">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nomor Rekening</label>
+                                <input type="text" class="form-control form-control-sm" id="nomorrekening">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nama di Rekening</label>
+                                <input type="text" class="form-control form-control-sm" id="namadirekening">
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-end">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btnSimpanPicSekolah">Simpan Data</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT & DETAIL PIC SEKOLAH -->
+    <div class="modal fade" id="modalEditPicSekolah" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold fs-6 text-primary"><i class="bi bi-pencil-square me-2"></i>Detail & Edit Data PIC Sekolah</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditPicSekolah">
+                        <input type="hidden" id="edit_id">
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">ID PIC Sekolah</label>
+                                <input type="text" class="form-control form-control-sm bg-light" id="edit_idpicsekolah" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">ID SPPG</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_idsppg">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">NIK</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_nik">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nama PIC Sekolah</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_namapicsekolah" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Tugas</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_tugas">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Salary / Gaji (Rp)</label>
+                                <input type="number" class="form-control form-control-sm" id="edit_salary">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Alamat Singkat</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_alamat">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Alamat Lengkap</label>
+                                <textarea class="form-control form-control-sm" id="edit_alamatlengkap" rows="2"></textarea>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Desa</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_desa">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Kecamatan</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_kecamatan">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Kabupaten</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_kabupaten">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Propinsi</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_propinsi">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">No. Telepon</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_nomortelp">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Tanggal Mulai Tugas</label>
+                                <input type="date" class="form-control form-control-sm" id="edit_tanggalmulaitugas">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Tanggal Selesai Tugas</label>
+                                <input type="date" class="form-control form-control-sm" id="edit_tanggalselesaitugas">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Nama Bank</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_namabank">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nomor Rekening</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_nomorrekening">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nama di Rekening</label>
+                                <input type="text" class="form-control form-control-sm" id="edit_namadirekening">
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-end">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btnUpdatePicSekolah">Simpan Perubahan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CDN JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Panggil File Supabase JS Terpusat -->
+    <script src="js/supabase.js"></script>
+
+    <script>
+        let semuaDataPicSekolah = [];
+
+        // Generate ID PIC Sekolah Otomatis saat Modal Dibuka
+        const modalTambahEl = document.getElementById('modalTambahPicSekolah');
+        modalTambahEl.addEventListener('show.bs.modal', function () {
+            const randomId = 'PICS-' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('formTambahPicSekolah').reset();
+            document.getElementById('idpicsekolah').value = randomId;
+        });
+
+        // 1. Ambil Data dari Supabase
+        async function fetchPicSekolahData() {
+            const tbody = document.getElementById('tablePicSekolahBody');
+            
+            const { data, error } = await _supabase
+                .from('master_pic_sekolah')
+                .select('*')
+                .is('deleted_at', null)
+                .order('id', { ascending: false });
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
+                return;
+            }
+
+            semuaDataPicSekolah = data || [];
+            tampilkanDataKeTabel(semuaDataPicSekolah);
+        }
+
+        // 2. Tampilkan Data ke Tabel HTML
+        function tampilkanDataKeTabel(data) {
+            const tbody = document.getElementById('tablePicSekolahBody');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data PIC sekolah yang ditemukan.</td></tr>`;
+                updateTombolHapusMasal();
+                return;
+            }
+
+            let html = '';
+            data.forEach((item, index) => {
+                const salaryFormatted = item.salary ? 'Rp ' + Number(item.salary).toLocaleString('id-ID') : 'Rp 0';
+                const statusText = item.tanggalselesaitugas ? 'Tidak Aktif' : 'Aktif';
+                const badgeStatus = statusText === 'Aktif' ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Tidak Aktif</span>';
+                
+                html += `
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input check-item" value="${item.idpicsekolah}" onchange="updateTombolHapusMasal()">
+                        </td>
+                        <td>${index + 1}</td>
+                        <td><span class="badge bg-light text-dark border">${item.idpicsekolah || '-'}</span></td>
+                        <td>${item.idsppg || '-'}</td>
+                        <td class="fw-semibold">
+                            <a href="javascript:void(0);" onclick='bukaEditPicSekolah(${JSON.stringify(item)})' class="text-primary text-decoration-none" title="Klik untuk lihat detail / edit">
+                                ${item.namapicsekolah || '-'}
+                            </a>
+                        </td>
+                        <td><small><b>Tugas:</b> ${item.tugas || '-'}<br><b>Salary:</b> ${salaryFormatted}</small></td>
+                        <td>${item.nomortelp || '-'}<br><small class="text-muted">${item.kabupaten || '-'}</small></td>
+                        <td>${badgeStatus}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-danger" onclick="hapusPicSekolah('${item.idpicsekolah}')" title="Hapus Data">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            updateTombolHapusMasal();
+        }
+
+        // 3. Pencarian Berdasarkan Nama / ID / Tugas
+        function filterDataPicSekolah() {
+            const keyword = document.getElementById('inputPencarian').value.toLowerCase();
+            const hasilFilter = semuaDataPicSekolah.filter(item => {
+                const nama = (item.namapicsekolah || '').toLowerCase();
+                const idpic = (item.idpicsekolah || '').toLowerCase();
+                const tugas = (item.tugas || '').toLowerCase();
+
+                return nama.includes(keyword) || idpic.includes(keyword) || tugas.includes(keyword);
+            });
+            tampilkanDataKeTabel(hasilFilter);
+        }
+
+        function resetPencarian() {
+            document.getElementById('inputPencarian').value = '';
+            tampilkanDataKeTabel(semuaDataPicSekolah);
+        }
+
+        // 4. Pilih Semua (Check All)
+        function pilihSemuaBaris(masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.check-item');
+            checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+            updateTombolHapusMasal();
+        }
+
+        // 5. Update Tombol Hapus Masal
+        function updateTombolHapusMasal() {
+            const checkboxes = document.querySelectorAll('.check-item:checked');
+            const btnHapus = document.getElementById('btnHapusMasal');
+            const countSpan = document.getElementById('countTerpilih');
+            
+            countSpan.textContent = checkboxes.length;
+            if (checkboxes.length > 0) {
+                btnHapus.removeAttribute('disabled');
+            } else {
+                btnHapus.setAttribute('disabled', 'true');
+                document.getElementById('checkAll').checked = false;
+            }
+        }
+
+        // 6. Buka Modal Edit & Populasi Form
+        function bukaEditPicSekolah(item) {
+            document.getElementById('edit_id').value = item.id;
+            document.getElementById('edit_idpicsekolah').value = item.idpicsekolah || '';
+            document.getElementById('edit_idsppg').value = item.idsppg || '';
+            document.getElementById('edit_nik').value = item.nik || '';
+            document.getElementById('edit_namapicsekolah').value = item.namapicsekolah || '';
+            document.getElementById('edit_tugas').value = item.tugas || '';
+            document.getElementById('edit_salary').value = item.salary || 0;
+            document.getElementById('edit_alamat').value = item.alamat || '';
+            document.getElementById('edit_alamatlengkap').value = item.alamatlengkap || '';
+            document.getElementById('edit_desa').value = item.desa || '';
+            document.getElementById('edit_kecamatan').value = item.kecamatan || '';
+            document.getElementById('edit_kabupaten').value = item.kabupaten || '';
+            document.getElementById('edit_propinsi').value = item.propinsi || '';
+            document.getElementById('edit_nomortelp').value = item.nomortelp || '';
+            document.getElementById('edit_tanggalmulaitugas').value = item.tanggalmulaitugas || '';
+            document.getElementById('edit_tanggalselesaitugas').value = item.tanggalselesaitugas || '';
+            document.getElementById('edit_namabank').value = item.namabank || '';
+            document.getElementById('edit_nomorrekening').value = item.nomorrekening || '';
+            document.getElementById('edit_namadirekening').value = item.namadirekening || '';
+
+            const modalEdit = new bootstrap.Modal(document.getElementById('modalEditPicSekolah'));
+            modalEdit.show();
+        }
+
+        // 7. Simpan Data Baru (Create)
+        document.getElementById('formTambahPicSekolah').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSimpanPicSekolah');
+            btn.disabled = true;
+            btn.textContent = 'Menyimpan...';
+
+            const payload = {
+                idpicsekolah: document.getElementById('idpicsekolah').value,
+                idsppg: document.getElementById('idsppg').value,
+                nik: document.getElementById('nik').value,
+                namapicsekolah: document.getElementById('namapicsekolah').value,
+                tugas: document.getElementById('tugas').value,
+                salary: parseFloat(document.getElementById('salary').value) || 0,
+                alamat: document.getElementById('alamat').value,
+                alamatlengkap: document.getElementById('alamatlengkap').value,
+                desa: document.getElementById('desa').value,
+                kecamatan: document.getElementById('kecamatan').value,
+                kabupaten: document.getElementById('kabupaten').value,
+                propinsi: document.getElementById('propinsi').value,
+                nomortelp: document.getElementById('nomortelp').value,
+                tanggalmulaitugas: document.getElementById('tanggalmulaitugas').value || null,
+                tanggalselesaitugas: document.getElementById('tanggalselesaitugas').value || null,
+                namabank: document.getElementById('namabank').value,
+                nomorrekening: document.getElementById('nomorrekening').value,
+                namadirekening: document.getElementById('namadirekening').value,
+                create_by: 'Admin'
+            };
+
+            const { error } = await _supabase.from('master_pic_sekolah').insert([payload]);
+
+            if (error) {
+                alert('Gagal menyimpan: ' + error.message);
+            } else {
+                const modalEl = document.getElementById('modalTambahPicSekolah');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                fetchPicSekolahData();
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Simpan Data';
+        });
+
+        // 8. Update Data (Edit)
+        document.getElementById('formEditPicSekolah').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnUpdatePicSekolah');
+            btn.disabled = true;
+            btn.textContent = 'Menyimpan...';
+
+            const recordId = document.getElementById('edit_id').value;
+
+            const payload = {
+                idsppg: document.getElementById('edit_idsppg').value,
+                nik: document.getElementById('edit_nik').value,
+                namapicsekolah: document.getElementById('edit_namapicsekolah').value,
+                tugas: document.getElementById('edit_tugas').value,
+                salary: parseFloat(document.getElementById('edit_salary').value) || 0,
+                alamat: document.getElementById('edit_alamat').value,
+                alamatlengkap: document.getElementById('edit_alamatlengkap').value,
+                desa: document.getElementById('edit_desa').value,
+                kecamatan: document.getElementById('edit_kecamatan').value,
+                kabupaten: document.getElementById('edit_kabupaten').value,
+                propinsi: document.getElementById('edit_propinsi').value,
+                nomortelp: document.getElementById('edit_nomortelp').value,
+                tanggalmulaitugas: document.getElementById('edit_tanggalmulaitugas').value || null,
+                tanggalselesaitugas: document.getElementById('edit_tanggalselesaitugas').value || null,
+                namabank: document.getElementById('edit_namabank').value,
+                nomorrekening: document.getElementById('edit_nomorrekening').value,
+                namadirekening: document.getElementById('edit_namadirekening').value,
+                edit_at: new Date().toISOString(),
+                edit_by: 'Admin'
+            };
+
+            const { error } = await _supabase
+                .from('master_pic_sekolah')
+                .update(payload)
+                .eq('id', recordId);
+
+            if (error) {
+                alert('Gagal memperbarui: ' + error.message);
+            } else {
+                const modalEl = document.getElementById('modalEditPicSekolah');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                fetchPicSekolahData();
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Simpan Perubahan';
+        });
+
+        // 9. Soft Delete Satuan
+        async function hapusPicSekolah(idpicsekolah) {
+            if (confirm('Yakin ingin menghapus data PIC sekolah ini?')) {
+                const waktuHapus = new Date().toISOString();
+                const { error } = await _supabase
+                    .from('master_pic_sekolah')
+                    .update({ 
+                        deleted_at: waktuHapus, 
+                        deleted_by: 'Admin' 
+                    })
+                    .eq('idpicsekolah', idpicsekolah);
+
+                if (error) {
+                    alert('Gagal menghapus: ' + error.message);
+                } else {
+                    fetchPicSekolahData();
+                }
+            }
+        }
+
+        // 10. Soft Delete Masal
+        async function hapusDataMasal() {
+            const checkboxes = document.querySelectorAll('.check-item:checked');
+            const idsToDelete = Array.from(checkboxes).map(cb => cb.value);
+
+            if (idsToDelete.length === 0) return;
+
+            if (confirm(`Yakin ingin menghapus ${idsToDelete.length} data PIC sekolah yang dipilih?`)) {
+                const waktuHapus = new Date().toISOString();
+                const { error } = await _supabase
+                    .from('master_pic_sekolah')
+                    .update({ 
+                        deleted_at: waktuHapus, 
+                        deleted_by: 'Admin' 
+                    })
+                    .in('idpicsekolah', idsToDelete);
+
+                if (error) {
+                    alert('Gagal menghapus data masal: ' + error.message);
+                } else {
+                    document.getElementById('checkAll').checked = false;
+                    fetchPicSekolahData();
+                }
+            }
+        }
+
+        // Jalankan saat halaman dimuat
+        fetchPicSekolahData();
+    </script>
+</body>
+</html>

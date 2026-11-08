@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Master SPPG</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
+        .card { border: 1px solid #e2e8f0; border-radius: 0.5rem; }
+        .readonly-locked { background-color: #e9ecef !important; cursor: not-allowed; }
+        .clickable-link { color: #0d6efd; text-decoration: none; font-weight: 600; cursor: pointer; }
+        .clickable-link:hover { text-decoration: underline; color: #0a58ca; }
+    </style>
+</head>
+<body class="p-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Data Master SPPG</h4>
+            <p class="text-muted small mb-0">Kelola informasi unit, alamat, dan perbankan SPPG</p>
+        </div>
+        <div>
+            <button class="btn btn-primary btn-sm" onclick="bukaModalTambah()">
+                <i class="bi bi-plus-lg me-1"></i> Tambah SPPG
+            </button>
+        </div>
+    </div>
+
+    <!-- KOTAK DEBUGGER -->
+    <div id="debug-alert" class="alert alert-danger d-none mb-3 small" role="alert">
+        <strong>Peringatan Sistem:</strong> <span id="debug-message"></span>
+    </div>
+
+    <div class="card shadow-sm bg-white">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>No</th>
+                            <th>ID SPPG</th>
+                            <th>Nama SPPG (Klik untuk Detail/Edit)</th>
+                            <th>Alamat & Wilayah</th>
+                            <th>Kontak / Email</th>
+                            <th>Info Perbankan (VA)</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableSPPGBody">
+                        <tr><td colspan="7" class="text-center text-muted py-4">Memuat data dari Supabase...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL FORM (TAMBAH / EDIT) -->
+    <div class="modal fade" id="modalFormSPPG" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold fs-6" id="modalTitle">Tambah Data SPPG</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formSPPG">
+                        <input type="hidden" id="editId">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">ID SPPG</label>
+                                <input type="text" class="form-control form-control-sm" id="idsppg" required>
+                                <small class="text-muted" id="infoIdsppg" style="font-size: 10px; display: none;">Terkunci sesuai akun Anda</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nama SPPG</label>
+                                <input type="text" class="form-control form-control-sm" id="namasppg" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Alamat SPPG</label>
+                                <textarea class="form-control form-control-sm" id="alamatsppg" rows="2"></textarea>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Desa</label>
+                                <input type="text" class="form-control form-control-sm" id="desa">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Kecamatan</label>
+                                <input type="text" class="form-control form-control-sm" id="kecamatan">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Kabupaten</label>
+                                <input type="text" class="form-control form-control-sm" id="kabupaten">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Propinsi</label>
+                                <input type="text" class="form-control form-control-sm" id="propinsi">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">E-Mail</label>
+                                <input type="email" class="form-control form-control-sm" id="email">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">No. Telepon / WhatsApp</label>
+                                <input type="text" class="form-control form-control-sm" id="notelp">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Nomor VA</label>
+                                <input type="text" class="form-control form-control-sm" id="nomorva">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Nama Bank</label>
+                                <input type="text" class="form-control form-control-sm" id="namabank">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Nama Pemilik VA</label>
+                                <input type="text" class="form-control form-control-sm" id="namava">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">No. BA Verval</label>
+                                <input type="text" class="form-control form-control-sm" id="nobaverval">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Tanggal</label>
+                                <input type="date" class="form-control form-control-sm" id="tanggal">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Tgl Mulai Running</label>
+                                <input type="date" class="form-control form-control-sm" id="tanggalmulairunning">
+                            </div>
+                        </div>
+                        <div class="mt-4 text-end">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary btn-sm" id="btnSimpan">Simpan Data</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Library Supabase & Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- File Koneksi Utama -->
+    <script src="js/supabase.js"></script>
+
+    <script>
+        let currentUserIdsppg = null;
+        let isSuperAdmin = false;
+        let currentUserNama = 'System';
+        let modalFormInstance = null;
+        let semuaDataSPPG = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            modalFormInstance = new bootstrap.Modal(document.getElementById('modalFormSPPG'));
+            await cekUser();
+            await fetchSPPG();
+        });
+
+        function showDebug(msg) {
+            const alertBox = document.getElementById('debug-alert');
+            const msgSpan = document.getElementById('debug-message');
+            msgSpan.textContent = msg;
+            alertBox.classList.remove('d-none');
+        }
+
+        async function cekUser() {
+            try {
+                const localUser = JSON.parse(localStorage.getItem('sppg_user') || '{}');
+                if (localUser && localUser.idsppg) {
+                    currentUserIdsppg = localUser.idsppg;
+                    currentUserNama = localUser.nama_petugas || 'System';
+                    const role = String(localUser.role_access || '').toLowerCase();
+                    const jabatan = String(localUser.jabatan || '').toLowerCase();
+                    
+                    isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super');
+                }
+            } catch (err) {
+                console.error('Gagal membaca sesi user:', err);
+            }
+        }
+
+        async function fetchSPPG() {
+            const tbody = document.getElementById('tableSPPGBody');
+            
+            if (typeof _supabase === 'undefined') {
+                showDebug("Objek '_supabase' tidak ditemukan. Pastikan file 'js/supabase.js' terpanggil dengan benar.");
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Gagal memuat koneksi database.</td></tr>`;
+                return;
+            }
+
+            // Mulai buat query Supabase
+            let query = _supabase
+                .from('master_sppg')
+                .select('*')
+                .is('deleted_at', null);
+
+            // JIKA BUKAN SUPER ADMIN, FILTER BERDASARKAN IDSPPG MILIK USER TERSEBUT
+            if (!isSuperAdmin) {
+                if (currentUserIdsppg) {
+                    query = query.eq('idsppg', currentUserIdsppg);
+                } else {
+                    // Jika user cabang tapi idsppg kosong, buat hasilnya kosong
+                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES');
+                }
+            }
+
+            const { data, error } = await query.order('id', { ascending: true });
+
+            if (error) {
+                showDebug(`Error dari Supabase: ${error.message} (Code: ${error.code})`);
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-3">Gagal mengambil data. Lihat kotak merah di atas.</td></tr>`;
+                return;
+            }
+
+            semuaDataSPPG = data || [];
+
+            if (semuaDataSPPG.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada data SPPG yang sesuai dengan unit Anda.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            semuaDataSPPG.forEach((item, index) => {
+                html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${item.idsppg || '-'}</td>
+                        <td>
+                            <a href="#" class="clickable-link" onclick="bukaModalEdit(${item.id})">
+                                ${item.namasppg || '-'}
+                            </a>
+                        </td>
+                        <td>
+                            <small>
+                                ${item.alamatsppg || '-'}<br>
+                                Desa: ${item.desa || '-'}, Kec: ${item.kecamatan || '-'}<br>
+                                ${item.kabupaten || '-'}, ${item.propinsi || '-'}
+                            </small>
+                        </td>
+                        <td><small>${item.notelp || '-'}<br>${item['e-mail'] || '-'}</small></td>
+                        <td>
+                            <small>
+                                <b>Bank:</b> ${item.namabank || '-'}<br>
+                                <b>VA:</b> ${item.nomorva || '-'}<br>
+                                <b>A/N:</b> ${item.namava || '-'}
+                            </small>
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="bukaModalEdit(${item.id})" title="Edit"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="hapusSPPG(${item.id})" title="Hapus"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function bukaModalTambah() {
+            document.getElementById('formSPPG').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('modalTitle').textContent = 'Tambah Data SPPG';
+            document.getElementById('btnSimpan').textContent = 'Simpan Data';
+
+            if (!isSuperAdmin && currentUserIdsppg) {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.value = currentUserIdsppg;
+                inputIdsppg.readOnly = true;
+                inputIdsppg.classList.add('readonly-locked');
+                document.getElementById('infoIdsppg').style.display = 'block';
+            } else {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.readOnly = false;
+                inputIdsppg.classList.remove('readonly-locked');
+                document.getElementById('infoIdsppg').style.display = 'none';
+            }
+
+            modalFormInstance.show();
+        }
+
+        function bukaModalEdit(id) {
+            const item = semuaDataSPPG.find(d => d.id === id);
+            if (!item) return;
+
+            document.getElementById('editId').value = item.id;
+            document.getElementById('idsppg').value = item.idsppg || '';
+            document.getElementById('namasppg').value = item.namasppg || '';
+            document.getElementById('alamatsppg').value = item.alamatsppg || '';
+            document.getElementById('desa').value = item.desa || '';
+            document.getElementById('kecamatan').value = item.kecamatan || '';
+            document.getElementById('kabupaten').value = item.kabupaten || '';
+            document.getElementById('propinsi').value = item.propinsi || '';
+            document.getElementById('email').value = item['e-mail'] || '';
+            document.getElementById('notelp').value = item.notelp || '';
+            document.getElementById('nomorva').value = item.nomorva || '';
+            document.getElementById('namabank').value = item.namabank || '';
+            document.getElementById('namava').value = item.namava || '';
+            document.getElementById('nobaverval').value = item.nobaverval || '';
+            document.getElementById('tanggal').value = item.tanggal || '';
+            document.getElementById('tanggalmulairunning').value = item.tanggalmulairunning || '';
+
+            document.getElementById('modalTitle').textContent = 'Detail & Edit Data SPPG';
+            document.getElementById('btnSimpan').textContent = 'Perbarui Data';
+
+            if (!isSuperAdmin && currentUserIdsppg) {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.readOnly = true;
+                inputIdsppg.classList.add('readonly-locked');
+            }
+
+            modalFormInstance.show();
+        }
+
+        // SIMPAN / UPDATE DATA
+        document.getElementById('formSPPG').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSimpan');
+            const editId = document.getElementById('editId').value;
+            btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+            const payload = {
+                idsppg: document.getElementById('idsppg').value.trim(),
+                namasppg: document.getElementById('namasppg').value.trim(),
+                alamatsppg: document.getElementById('alamatsppg').value.trim() || null,
+                desa: document.getElementById('desa').value.trim() || null,
+                kecamatan: document.getElementById('kecamatan').value.trim() || null,
+                kabupaten: document.getElementById('kabupaten').value.trim() || null,
+                propinsi: document.getElementById('propinsi').value.trim() || null,
+                "e-mail": document.getElementById('email').value.trim() || null,
+                notelp: document.getElementById('notelp').value.trim() || null,
+                nomorva: document.getElementById('nomorva').value.trim() || null,
+                namabank: document.getElementById('namabank').value.trim() || null,
+                namava: document.getElementById('namava').value.trim() || null,
+                nobaverval: document.getElementById('nobaverval').value.trim() || null,
+                tanggal: document.getElementById('tanggal').value || null,
+                tanggalmulairunning: document.getElementById('tanggalmulairunning').value || null
+            };
+
+            let error;
+            if (editId) {
+                // UPDATE
+                payload.edit_at = new Date().toISOString();
+                payload.edit_by = currentUserNama;
+                const res = await _supabase.from('master_sppg').update(payload).eq('id', editId);
+                error = res.error;
+            } else {
+                // INSERT
+                payload.create_by = currentUserNama;
+                const res = await _supabase.from('master_sppg').insert([payload]);
+                error = res.error;
+            }
+            
+            if (error) {
+                alert('Gagal menyimpan: ' + error.message);
+            } else {
+                modalFormInstance.hide();
+                fetchSPPG();
+            }
+            btn.disabled = false; btn.textContent = editId ? 'Perbarui Data' : 'Simpan Data';
+        });
+
+        // SOFT DELETE
+        async function hapusSPPG(id) {
+            if (confirm('Yakin ingin menghapus data SPPG ini?')) {
+                const { error } = await _supabase
+                    .from('master_sppg')
+                    .update({ 
+                        deleted_at: new Date().toISOString(), 
+                        deleted_by: currentUserNama 
+                    })
+                    .eq('id', id);
+
+                if (error) alert('Gagal menghapus: ' + error.message);
+                else fetchSPPG();
+            }
+        }
+    </script>
+</body>
+</html>
