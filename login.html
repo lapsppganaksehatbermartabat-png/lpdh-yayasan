@@ -123,65 +123,51 @@
         // LOGIN FLOW (FIXED 401 UNAUTHORIZED)
         // ==========================================
 async function handleLogin(event) {
-            event.preventDefault();
-            const email = document.getElementById('login-email').value.trim();
-            const password = document.getElementById('login-password').value.trim();
-            const btn = document.getElementById('btn-submit');
+    event.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+    const btn = document.getElementById('btn-submit');
 
-            btn.disabled = true;
-            btn.innerText = 'Memeriksa Autentikasi...';
+    btn.disabled = true;
+    btn.innerText = 'Memeriksa Autentikasi...';
 
-            try {
-                // 1. Lakukan Auth login ke Supabase
-                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
+    try {
+        // 1. Autentikasi resmi via Supabase Auth (Memeriksa token & enkripsi password)
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
 
-                if (authError) {
-                    showAlert('Login Gagal: Email atau password salah.');
-                    btn.disabled = false;
-                    btn.innerText = 'Masuk';
-                    return;
-                }
-
-                // 2. Ambil data profil dari users_login berdasarkan username/email
-                const { data: userData, error: userError } = await supabaseClient
-                    .from('users_login')
-                    .select('*')
-                    .eq('username', email)
-                    .single();
-
-                if (userError || !userData) {
-                    showAlert('Login Gagal: Profil data pengguna tidak ditemukan di database.');
-                    btn.disabled = false;
-                    btn.innerText = 'Masuk';
-                    return;
-                }
-
-                // 3. Validasi khusus Super Admin (Bebas akses full, tidak perlu validasi ketat ID SPPG)
-                const role = String(userData.role_access || '').toLowerCase();
-                const isSuperAdmin = role === 'superadmin' || role === 'admin';
-
-                if (!userData.is_active && !isSuperAdmin) {
-                    showAlert('Akun belum aktif, silahkan hubungi admin.');
-                    btn.disabled = false;
-                    btn.innerText = 'Masuk';
-                    return;
-                }
-
-                // SIMPAN KE SESSION STORAGE
-                sessionStorage.setItem('sppg_user', JSON.stringify(userData));
-                window.location.replace('main.html');
-
-            } catch (err) {
-                console.error(err);
-                showAlert('Terjadi kesalahan pada sistem.');
-            } finally {
-                btn.disabled = false;
-                btn.innerText = 'Masuk';
-            }
+        if (authError) {
+            alert('Login Gagal: Email atau password salah.');
+            return;
         }
+
+        // 2. Ambil data profil dari tabel 'users_login' berdasarkan auth_user_id
+        // Ini aman karena policy RLS mengizinkan user membaca data miliknya sendiri via auth.uid()
+        const { data: userData, error: userError } = await supabaseClient
+            .from('users_login')
+            .select('*')
+            .eq('auth_user_id', authData.user.id)
+            .single();
+
+        if (userError || !userData) {
+            alert('Login Gagal: Data profil pengguna tidak ditemukan.');
+            return;
+        }
+
+        // 3. Simpan sesi lokal dan arahkan ke halaman utama
+        sessionStorage.setItem('sppg_user', JSON.stringify(userData));
+        window.location.replace('main.html');
+
+    } catch (err) {
+        console.error(err);
+        alert('Terjadi kesalahan pada sistem.');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Masuk';
+    }
+}
 
         // ==========================================
         // REGISTER FLOW
