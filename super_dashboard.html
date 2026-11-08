@@ -105,16 +105,36 @@
             setTimeout(() => box.classList.add('hidden'), 4000);
         }
 
-async function cekAdminAccess() {
+        async function cekAdminAccess() {
             try {
-                // Cek dari sessionStorage terlebih dahulu, fallback ke localStorage
-                const localUser = JSON.parse(sessionStorage.getItem('sppg_user') || localStorage.getItem('sppg_user') || '{}');
-                if (!localUser || !localUser.role_access) {
+                // Cek dari sessionStorage, jika gagal cek window.parent, jika gagal cek localStorage
+                let localUser = null;
+                try {
+                    localUser = JSON.parse(sessionStorage.getItem('sppg_user') || 'null');
+                } catch(err) {}
+
+                if (!localUser && window.parent && window.parent.sessionStorage) {
+                    try {
+                        localUser = JSON.parse(window.parent.sessionStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (!localUser) {
+                    try {
+                        localUser = JSON.parse(localStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (!localUser || (!localUser.role_access && !localUser.jabatan)) {
+                    // Jika benar-benar tidak ada sesi, baru lempar ke login
                     window.location.replace('login.html');
                     return false;
                 }
                 
-                const role = String(localUser.role_access).toLowerCase();
+                // Pastikan sesi sinkron di sessionStorage halaman ini
+                sessionStorage.setItem('sppg_user', JSON.stringify(localUser));
+
+                const role = String(localUser.role_access || '').toLowerCase();
                 const jabatan = String(localUser.jabatan || '').toLowerCase();
                 const email = String(localUser.username || localUser.email || '').toLowerCase();
                 
@@ -127,6 +147,7 @@ async function cekAdminAccess() {
                 }
                 return true;
             } catch (e) {
+                console.error("Auth check error:", e);
                 window.location.replace('login.html');
                 return false;
             }
@@ -150,7 +171,6 @@ async function cekAdminAccess() {
                 const role = String(u.role_access || '').toLowerCase();
                 const jabatan = String(u.jabatan || '').toLowerCase();
                 
-                // Jika rolenya superadmin atau jabatan mengandung kata "super user" / "super administrator", sembunyikan
                 const isSuperAccount = role === 'superadmin' || jabatan === 'super user' || jabatan.includes('super administrator');
                 return !isSuperAccount; 
             });
