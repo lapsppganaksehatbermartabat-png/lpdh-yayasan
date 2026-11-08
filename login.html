@@ -120,7 +120,7 @@
         }
 
         // ==========================================
-        // LOGIN FLOW (HYBRID SIGN-IN)
+        // LOGIN FLOW (FIXED 401 UNAUTHORIZED)
         // ==========================================
         async function handleLogin(event) {
             event.preventDefault();
@@ -129,9 +129,23 @@
             const btn = document.getElementById('btn-submit');
 
             btn.disabled = true;
-            btn.innerText = 'Memeriksa Akun...';
+            btn.innerText = 'Memeriksa Autentikasi...';
 
             try {
+                // 1. Lakukan Auth login TERLEBIH DAHULU agar sesi/token aktif terbentuk
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (authError) {
+                    showAlert('Login Gagal: Email atau password salah.');
+                    btn.disabled = false;
+                    btn.innerText = 'Masuk';
+                    return;
+                }
+
+                // 2. Setelah auth sukses, baru ambil data profil dari users_login
                 const { data: userData, error: userError } = await supabaseClient
                     .from('users_login')
                     .select('*')
@@ -139,14 +153,7 @@
                     .single();
 
                 if (userError || !userData) {
-                    showAlert('Login Gagal: Email tidak terdaftar.');
-                    btn.disabled = false;
-                    btn.innerText = 'Masuk';
-                    return;
-                }
-
-                if (userData.password !== password && userData.password !== '[PROTECTED]') {
-                    showAlert('Login Gagal: Email atau password salah.');
+                    showAlert('Login Gagal: Profil data pengguna tidak ditemukan.');
                     btn.disabled = false;
                     btn.innerText = 'Masuk';
                     return;
@@ -163,8 +170,6 @@
                     btn.innerText = 'Masuk';
                     return;
                 }
-
-                await supabaseClient.auth.signInWithPassword({ email, password }).catch(() => {});
 
                 // SIMPAN KE SESSION STORAGE AGAR AMAN DAN HANCUR SAAT TAB DITUTUP
                 sessionStorage.setItem('sppg_user', JSON.stringify(userData));
@@ -200,7 +205,22 @@
             btn.innerText = 'Memproses Pendaftaran...';
 
             try {
-                const { data, error } = await supabaseClient
+                // 1. Buat akun Auth Supabase terlebih dahulu
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: { data: { nama_petugas: nama_petugas } }
+                });
+
+                if (authError) {
+                    showAlert('Gagal mendaftar auth: ' + authError.message);
+                    btn.disabled = false;
+                    btn.innerText = 'Kirim Pendaftaran';
+                    return;
+                }
+
+                // 2. Masukkan ke tabel users_login
+                const { error: insertError } = await supabaseClient
                     .from('users_login')
                     .insert([{
                         idsppg: idsppg,
@@ -209,21 +229,16 @@
                         username: email,
                         password: password,
                         role_access: 'viewer',
-                        is_active: false
+                        is_active: false,
+                        auth_user_id: authData.user ? authData.user.id : null
                     }]);
 
-                if (error) {
-                    showAlert('Gagal mendaftar: ' + error.message);
+                if (insertError) {
+                    showAlert('Gagal menyimpan profil: ' + insertError.message);
                     btn.disabled = false;
                     btn.innerText = 'Kirim Pendaftaran';
                     return;
                 }
-
-                await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: { data: { nama_petugas: nama_petugas } }
-                }).catch(() => {});
 
                 showAlert('Pendaftaran berhasil! Akun Anda menunggu persetujuan Super User.', true);
                 document.getElementById('form-register').reset();
