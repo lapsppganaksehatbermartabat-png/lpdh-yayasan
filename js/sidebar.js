@@ -92,11 +92,11 @@ window.renderSidebar = function () {
         cetak_report: getAccess('cetak_report')
     };
 
-    // =================================================
-    // CEK KELOMPOK MENU
+// =================================================
+    // CEK KELOMPOK MENU (Bypass untuk Super User)
     // =================================================
 
-    const showMaster =
+    const showMaster = isSuperUser || (
         acc.master_sppg !== 'hidden' ||
         acc.master_petugas !== 'hidden' ||
         acc.master_pm !== 'hidden' ||
@@ -104,25 +104,29 @@ window.renderSidebar = function () {
         acc.master_pic_posyandu !== 'hidden' ||
         acc.master_relawan !== 'hidden' ||
         acc.master_barang !== 'hidden' ||
-        acc.master_suplier !== 'hidden';
+        acc.master_suplier !== 'hidden'
+    );
 
-    const showRab =
+    const showRab = isSuperUser || (
         acc.rab_bahan_baku !== 'hidden' ||
         acc.rab_operasional !== 'hidden' ||
-        acc.rab_insentif_sppg !== 'hidden';
+        acc.rab_insentif_sppg !== 'hidden'
+    );
 
-    const showMaker =
+    const showMaker = isSuperUser || (
         acc.maker_bahan_baku !== 'hidden' ||
         acc.maker_operasional !== 'hidden' ||
         acc.maker_relawan !== 'hidden' ||
         acc.maker_pic_sekolah !== 'hidden' ||
         acc.maker_pic_posyandu !== 'hidden' ||
-        acc.maker_insentif_sppg !== 'hidden';
+        acc.maker_insentif_sppg !== 'hidden'
+    );
 
-    const showKeuangan =
+    const showKeuangan = isSuperUser || (
         acc.saldo_awal !== 'hidden' ||
         acc.pemasukan !== 'hidden' ||
-        acc.pengeluaran !== 'hidden';
+        acc.pengeluaran !== 'hidden'
+    );
 
     // =================================================
     // MEMBUAT SIDEBAR
