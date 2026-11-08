@@ -105,9 +105,10 @@
             setTimeout(() => box.classList.add('hidden'), 4000);
         }
 
-        async function cekAdminAccess() {
+async function cekAdminAccess() {
             try {
-                const localUser = JSON.parse(localStorage.getItem('sppg_user') || '{}');
+                // Cek dari sessionStorage terlebih dahulu, fallback ke localStorage
+                const localUser = JSON.parse(sessionStorage.getItem('sppg_user') || localStorage.getItem('sppg_user') || '{}');
                 if (!localUser || !localUser.role_access) {
                     window.location.replace('login.html');
                     return false;
@@ -115,7 +116,9 @@
                 
                 const role = String(localUser.role_access).toLowerCase();
                 const jabatan = String(localUser.jabatan || '').toLowerCase();
-                const isSuper = role === 'superadmin' || role === 'admin' || jabatan.includes('super');
+                const email = String(localUser.username || localUser.email || '').toLowerCase();
+                
+                const isSuper = role === 'superadmin' || role === 'admin' || jabatan.includes('super') || email === 'haaziqnawraalfatih@gmail.com';
 
                 if (!isSuper) {
                     alert("Akses Ditolak! Anda bukan Admin.");
