@@ -97,7 +97,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold">ID SPPG</label>
-                                <input type="text" class="form-control form-control-sm" id="idspppg" placeholder="ID SPPG Terkait">
+                                <input type="text" class="form-control form-control-sm" id="idsppg" placeholder="ID SPPG Terkait">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Nama Kelompok Penerima Manfaat</label>
@@ -227,7 +227,7 @@
                         </div>
                         <div class="col-md-4">
                             <span class="text-muted d-block">ID SPPG</span>
-                            <strong id="det-idspppg">-</strong>
+                            <strong id="det-idsppg">-</strong>
                         </div>
                         <div class="col-md-4">
                             <span class="text-muted d-block">Klasifikasi Instansi</span>
@@ -369,7 +369,7 @@
                         </td>
                         <td>${index + 1}</td>
                         <td><span class="badge bg-light text-dark border">${item.idkpm || '-'}</span></td>
-                        <td>${item.idspppg || '-'}</td>
+                        <td>${item.idsppg || '-'}</td>
                         <td class="fw-semibold">
                             <a href="javascript:void(0);" onclick='bukaDetailPM(${JSON.stringify(item)})' class="text-primary text-decoration-none" title="Klik untuk lihat detail">
                                 ${item.NamaKelompokPenerimamanfaat || '-'}
@@ -393,7 +393,7 @@
         // Fungsi Membuka Modal Detail PM
         function bukaDetailPM(item) {
             document.getElementById('det-idkpm').textContent = item.idkpm || '-';
-            document.getElementById('det-idspppg').textContent = item.idspppg || '-';
+            document.getElementById('det-idsppg').textContent = item.idsppg || '-';
             document.getElementById('det-klasifikasi').textContent = item.klasifikasiinstansi || '-';
             document.getElementById('det-namapm').textContent = item.NamaKelompokPenerimamanfaat || '-';
 
@@ -527,7 +527,7 @@
 
             const payload = {
                 idkpm: document.getElementById('idkpm').value,
-                idspppg: document.getElementById('idspppg').value,
+                idsppg: document.getElementById('idsppg').value,
                 NamaKelompokPenerimamanfaat: document.getElementById('NamaKelompokPenerimamanfaat').value,
                 klasifikasiinstansi: document.getElementById('klasifikasiinstansi').value,
                 hrgapaketkecil: 8000,
