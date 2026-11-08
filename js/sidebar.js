@@ -1,5 +1,5 @@
 // =====================================================
-// FILE: js/sidebar.js (REVISED, SECURE & FULL ACCESS FOR SUPERADMIN)
+// FILE: js/sidebar.js (UTUH, BERSIH & FULL ACCESS SUPERADMIN)
 // =====================================================
 
 window.renderSidebar = function () {
@@ -20,12 +20,12 @@ window.renderSidebar = function () {
         console.error('Gagal membaca data user:', error);
     }
 
-    // 2. Deklarasikan variabel secara eksplisit di sini agar scope-nya aman
+    // 2. Deklarasikan variabel identitas user
     const userJabatan = String(currentUser.jabatan || '').toLowerCase().trim();
     const userRole = String(currentUser.role_access || '').toLowerCase().trim();
     const userEmail = String(currentUser.username || currentUser.email || '').toLowerCase().trim();
 
-    // 3. Evaluasi status Super User
+    // 3. Evaluasi status Super User secara mutlak
     const isSuperUser =
         userJabatan.includes('super') ||
         userRole === 'superadmin' ||
@@ -33,7 +33,26 @@ window.renderSidebar = function () {
         userRole === 'admin' ||
         userEmail === 'haaziqnawraalfatih@gmail.com';
 
-    console.log("Status isSuperUser:", isSuperUser); // Untuk memastikan nilainya true di console
+    console.log("Status isSuperUser:", isSuperUser);
+
+    // Ambil hak akses menu dengan pengaman objek kosong
+    const permissions = currentUser.menu_permissions || {};
+
+    // 4. Fungsi pengecekan akses (DIDEKLARASIKAN KEMBALI DI SINI AGAR TIDAK ERROR)
+    function getAccess(menuKey) {
+        if (isSuperUser) return 'edit';
+
+        const access = permissions[menuKey];
+        if (
+            access === undefined ||
+            access === null ||
+            access === ''
+        ) {
+            return 'hidden';
+        }
+
+        return String(access).toLowerCase().trim();
+    }
 
     // =================================================
     // STATUS AKSES MENU
@@ -72,7 +91,7 @@ window.renderSidebar = function () {
         cetak_report: getAccess('cetak_report')
     };
 
-// =================================================
+    // =================================================
     // CEK KELOMPOK MENU (Bypass untuk Super User)
     // =================================================
 
