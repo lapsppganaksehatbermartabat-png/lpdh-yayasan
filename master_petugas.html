@@ -29,7 +29,12 @@
         </div>
     </div>
 
-    <!-- KOTAK DEBUGGER -->
+    <!-- KOTAK DEBUGGER INFO SESI -->
+    <div id="session-debug" class="alert alert-info mb-3 small" role="alert">
+        <strong>Status Sesi:</strong> <span id="debug-session-text">Mendeteksi sesi...</span>
+    </div>
+
+    <!-- KOTAK DEBUGGER ERROR -->
     <div id="debug-alert" class="alert alert-danger d-none mb-3 small" role="alert">
         <strong>Peringatan Sistem:</strong> <span id="debug-message"></span>
     </div>
@@ -118,7 +123,7 @@
                                 <input type="date" class="form-control form-control-sm" id="tmt">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label small fw-semibold">TMS</label>
+                                <label class="form-label small fw-semibold">TMS (Tanggal Mulai Selesai/Nonaktif)</label>
                                 <input type="date" class="form-control form-control-sm" id="tms">
                             </div>
                         </div>
@@ -178,6 +183,10 @@
                     
                     isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super') || email === 'haaziqnawraalfatih@gmail.com';
 
+                    // Tampilkan status sesi di kotak info atas untuk debugging
+                    document.getElementById('debug-session-text').textContent = 
+                        `Login sebagai: ${localUser.nama_petugas || localUser.username} | Role: ${localUser.role_access || '-'} | ID SPPG: ${currentUserIdsppg || 'KOSONG!'} | SuperAdmin: ${isSuperAdmin}`;
+
                     if (!isSuperAdmin && currentUserIdsppg) {
                         const inputIdsppg = document.getElementById('idsppg');
                         if (inputIdsppg) {
@@ -187,9 +196,12 @@
                             document.getElementById('infoIdsppg').style.display = 'block';
                         }
                     }
+                } else {
+                    document.getElementById('debug-session-text').textContent = "Sesi tidak ditemukan!";
                 }
             } catch (err) {
                 console.error('Gagal membaca sesi user:', err);
+                document.getElementById('debug-session-text').textContent = "Error membaca sesi: " + err.message;
             }
         }
 
@@ -206,7 +218,7 @@
             }
         });
 
-        // 2. Ambil Data dengan Filter Akses
+        // Ambil Data dengan Filter Akses & Soft Delete
         async function fetchPetugasData() {
             const tbody = document.getElementById('tablePetugasBody');
             
@@ -225,7 +237,7 @@
                 if (currentUserIdsppg) {
                     query = query.eq('idsppg', currentUserIdsppg);
                 } else {
-                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES');
+                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES_KARENA_KOSONG');
                 }
             }
 
@@ -244,14 +256,17 @@
         function tampilkanDataKeTabel(data) {
             const tbody = document.getElementById('tablePetugasBody');
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data petugas yang ditemukan.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data petugas yang ditemukan untuk ID SPPG Anda.</td></tr>`;
                 updateTombolHapusMasal();
                 return;
             }
 
             let html = '';
             data.forEach((item, index) => {
-                const badgeStatus = item.tms ? '<span class="badge bg-secondary">Tidak Aktif</span>' : '<span class="badge bg-success">Aktif</span>';
+                const statusText = item.status || (item.tms ? 'Tidak Aktif' : 'Aktif');
+                const badgeClass = statusText === 'Aktif' ? 'bg-success' : 'bg-secondary';
+                const badgeStatus = `<span class="badge ${badgeClass}">${statusText}</span>`;
+
                 html += `
                     <tr>
                         <td class="text-center"><input type="checkbox" class="form-check-input check-item" value="${item.id}" onchange="updateTombolHapusMasal()"></td>
@@ -298,7 +313,7 @@
             document.getElementById('btnHapusMasal').disabled = count === 0;
         }
 
-        // 3. Simpan Data
+        // Simpan Data
         document.getElementById('formTambahPetugas').addEventListener('submit', async function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSimpanPetugas');
@@ -330,9 +345,9 @@
             btn.disabled = false; btn.textContent = 'Simpan Data';
         });
 
-        // 4. Hapus Data (SOFT DELETE)
+        // Hapus Data (SOFT DELETE)
         async function hapusPetugas(id) {
-            if (confirm('Yakin ingin menghapus data petugas ini? (Data tetap tersimpan di database)')) {
+            if (confirm('Yakin ingin menghapus data petugas ini?')) {
                 const { error } = await _supabase
                     .from('master_petugas')
                     .update({ 
@@ -346,7 +361,7 @@
             }
         }
 
-        // 5. Hapus Masal (SOFT DELETE)
+        // Hapus Masal (SOFT DELETE)
         async function hapusDataMasal() {
             const ids = Array.from(document.querySelectorAll('.check-item:checked')).map(cb => parseInt(cb.value));
             if (ids.length === 0) return;
