@@ -122,7 +122,7 @@
         // ==========================================
         // LOGIN FLOW (FIXED 401 UNAUTHORIZED)
         // ==========================================
-        async function handleLogin(event) {
+async function handleLogin(event) {
             event.preventDefault();
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value.trim();
@@ -132,7 +132,7 @@
             btn.innerText = 'Memeriksa Autentikasi...';
 
             try {
-                // 1. Lakukan Auth login TERLEBIH DAHULU agar sesi/token aktif terbentuk
+                // 1. Lakukan Auth login ke Supabase
                 const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
@@ -145,7 +145,7 @@
                     return;
                 }
 
-                // 2. Setelah auth sukses, baru ambil data profil dari users_login
+                // 2. Ambil data profil dari users_login berdasarkan username/email
                 const { data: userData, error: userError } = await supabaseClient
                     .from('users_login')
                     .select('*')
@@ -153,25 +153,24 @@
                     .single();
 
                 if (userError || !userData) {
-                    showAlert('Login Gagal: Profil data pengguna tidak ditemukan.');
+                    showAlert('Login Gagal: Profil data pengguna tidak ditemukan di database.');
                     btn.disabled = false;
                     btn.innerText = 'Masuk';
                     return;
                 }
 
+                // 3. Validasi khusus Super Admin (Bebas akses full, tidak perlu validasi ketat ID SPPG)
                 const role = String(userData.role_access || '').toLowerCase();
-                const jabatan = String(userData.jabatan || '').toLowerCase();
-                const isSuper = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super');
-                const isActive = userData.is_active === true || userData.is_active === 'true' || userData.is_active === 1;
+                const isSuperAdmin = role === 'superadmin' || role === 'admin';
 
-                if (!isActive && !isSuper) {
-                    showAlert('Akun Belum aktif, silahkan hubungi admin');
+                if (!userData.is_active && !isSuperAdmin) {
+                    showAlert('Akun belum aktif, silahkan hubungi admin.');
                     btn.disabled = false;
                     btn.innerText = 'Masuk';
                     return;
                 }
 
-                // SIMPAN KE SESSION STORAGE AGAR AMAN DAN HANCUR SAAT TAB DITUTUP
+                // SIMPAN KE SESSION STORAGE
                 sessionStorage.setItem('sppg_user', JSON.stringify(userData));
                 window.location.replace('main.html');
 
