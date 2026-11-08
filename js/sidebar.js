@@ -1,5 +1,5 @@
 // =====================================================
-// FILE: js/sidebar.js (UTUH, BERSIH & FULL ACCESS SUPERADMIN)
+// FILE: js/sidebar.js (PERBAIKAN URUTAN FUNGSI)
 // =====================================================
 
 window.renderSidebar = function () {
@@ -33,12 +33,10 @@ window.renderSidebar = function () {
         userRole === 'admin' ||
         userEmail === 'haaziqnawraalfatih@gmail.com';
 
-    console.log("Status isSuperUser:", isSuperUser);
-
     // Ambil hak akses menu dengan pengaman objek kosong
     const permissions = currentUser.menu_permissions || {};
 
-    // 4. Fungsi pengecekan akses (DIDEKLARASIKAN KEMBALI DI SINI AGAR TIDAK ERROR)
+    // 4. DEFINISIKAN FUNGSI getAccess DI ATAS SEBELUM DIPAKAI OLEH OBJEK acc
     function getAccess(menuKey) {
         if (isSuperUser) return 'edit';
 
