@@ -29,12 +29,7 @@
         </div>
     </div>
 
-    <!-- KOTAK DEBUGGER INFO SESI -->
-    <div id="session-debug" class="alert alert-info mb-3 small" role="alert">
-        <strong>Status Sesi:</strong> <span id="debug-session-text">Mendeteksi sesi...</span>
-    </div>
-
-    <!-- KOTAK DEBUGGER ERROR -->
+    <!-- KOTAK DEBUGGER -->
     <div id="debug-alert" class="alert alert-danger d-none mb-3 small" role="alert">
         <strong>Peringatan Sistem:</strong> <span id="debug-message"></span>
     </div>
@@ -67,7 +62,7 @@
                         </tr>
                     </thead>
                     <tbody id="tablePetugasBody">
-                        <tr><td colspan="9" class="text-center text-muted py-4">Memuat data...</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-4">Memuat data dari Supabase...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -123,7 +118,7 @@
                                 <input type="date" class="form-control form-control-sm" id="tmt">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label small fw-semibold">TMS (Tanggal Mulai Selesai/Nonaktif)</label>
+                                <label class="form-label small fw-semibold">TMS</label>
                                 <input type="date" class="form-control form-control-sm" id="tms">
                             </div>
                         </div>
@@ -154,7 +149,12 @@
             alertBox.classList.remove('d-none');
         }
 
-        async function getUserSession() {
+        document.addEventListener('DOMContentLoaded', async () => {
+            await cekUser();
+            await fetchPetugasData();
+        });
+
+        async function cekUser() {
             try {
                 let localUser = null;
                 try {
@@ -175,55 +175,25 @@
 
                 if (localUser) {
                     currentUserIdsppg = localUser.idsppg;
-                    currentUserNama = localUser.nama_petugas || 'System';
+                    currentUserNama = localUser.nama_petugas || localUser.username || 'System';
                     
                     const role = String(localUser.role_access || '').toLowerCase();
                     const jabatan = String(localUser.jabatan || '').toLowerCase();
                     const email = String(localUser.username || localUser.email || '').toLowerCase();
                     
                     isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super') || email === 'haaziqnawraalfatih@gmail.com';
-
-                    // Tampilkan status sesi di kotak info atas untuk debugging
-                    document.getElementById('debug-session-text').textContent = 
-                        `Login sebagai: ${localUser.nama_petugas || localUser.username} | Role: ${localUser.role_access || '-'} | ID SPPG: ${currentUserIdsppg || 'KOSONG!'} | SuperAdmin: ${isSuperAdmin}`;
-
-                    if (!isSuperAdmin && currentUserIdsppg) {
-                        const inputIdsppg = document.getElementById('idsppg');
-                        if (inputIdsppg) {
-                            inputIdsppg.value = currentUserIdsppg;
-                            inputIdsppg.readOnly = true;
-                            inputIdsppg.classList.add('readonly-locked');
-                            document.getElementById('infoIdsppg').style.display = 'block';
-                        }
-                    }
-                } else {
-                    document.getElementById('debug-session-text').textContent = "Sesi tidak ditemukan!";
                 }
             } catch (err) {
                 console.error('Gagal membaca sesi user:', err);
-                document.getElementById('debug-session-text').textContent = "Error membaca sesi: " + err.message;
             }
         }
 
-        document.getElementById('modalTambahPetugas').addEventListener('show.bs.modal', function () {
-            document.getElementById('formTambahPetugas').reset();
-            if (!isSuperAdmin && currentUserIdsppg) {
-                const inputIdsppg = document.getElementById('idsppg');
-                inputIdsppg.value = currentUserIdsppg;
-                inputIdsppg.readOnly = true;
-                inputIdsppg.classList.add('readonly-locked');
-            } else {
-                document.getElementById('idsppg').readOnly = false;
-                document.getElementById('idsppg').classList.remove('readonly-locked');
-            }
-        });
-
-        // Ambil Data dengan Filter Akses & Soft Delete
         async function fetchPetugasData() {
             const tbody = document.getElementById('tablePetugasBody');
             
             if (typeof _supabase === 'undefined') {
-                showDebug("Objek '_supabase' tidak ditemukan.");
+                showDebug("Objek '_supabase' tidak ditemukan. Pastikan file 'js/supabase.js' terpanggil dengan benar.");
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Gagal memuat koneksi database.</td></tr>`;
                 return;
             }
 
@@ -232,20 +202,20 @@
                 .select('*')
                 .is('deleted_at', null);
 
-            // Jika BUKAN Super User, filter berdasarkan idsppg miliknya
+            // JIKA BUKAN SUPER ADMIN, FILTER BERDASARKAN IDSPPG MILIK USER TERSEBUT
             if (!isSuperAdmin) {
                 if (currentUserIdsppg) {
                     query = query.eq('idsppg', currentUserIdsppg);
                 } else {
-                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES_KARENA_KOSONG');
+                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES');
                 }
             }
 
             const { data, error } = await query.order('id', { ascending: true });
 
             if (error) {
-                showDebug(`Error Supabase: ${error.message}`);
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
+                showDebug(`Error dari Supabase: ${error.message} (Code: ${error.code})`);
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-3">Gagal mengambil data. Lihat kotak merah di atas.</td></tr>`;
                 return;
             }
 
@@ -256,7 +226,7 @@
         function tampilkanDataKeTabel(data) {
             const tbody = document.getElementById('tablePetugasBody');
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data petugas yang ditemukan untuk ID SPPG Anda.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data petugas yang sesuai dengan unit Anda.</td></tr>`;
                 updateTombolHapusMasal();
                 return;
             }
@@ -313,6 +283,23 @@
             document.getElementById('btnHapusMasal').disabled = count === 0;
         }
 
+        // Modal event handler untuk ID SPPG
+        document.getElementById('modalTambahPetugas').addEventListener('show.bs.modal', function () {
+            document.getElementById('formTambahPetugas').reset();
+            if (!isSuperAdmin && currentUserIdsppg) {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.value = currentUserIdsppg;
+                inputIdsppg.readOnly = true;
+                inputIdsppg.classList.add('readonly-locked');
+                document.getElementById('infoIdsppg').style.display = 'block';
+            } else {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.readOnly = false;
+                inputIdsppg.classList.remove('readonly-locked');
+                document.getElementById('infoIdsppg').style.display = 'none';
+            }
+        });
+
         // Simpan Data
         document.getElementById('formTambahPetugas').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -320,13 +307,13 @@
             btn.disabled = true; btn.textContent = 'Menyimpan...';
 
             const payload = {
-                idsppg: document.getElementById('idsppg').value,
-                nama: document.getElementById('nama').value,
-                niknip: document.getElementById('niknip').value,
-                jabatan: document.getElementById('jabatan').value,
-                email: document.getElementById('email').value,
-                notelp: document.getElementById('notelp').value,
-                nomorsk: document.getElementById('nomorsk').value,
+                idsppg: document.getElementById('idsppg').value.trim(),
+                nama: document.getElementById('nama').value.trim(),
+                niknip: document.getElementById('niknip').value.trim() || null,
+                jabatan: document.getElementById('jabatan').value.trim() || null,
+                email: document.getElementById('email').value.trim() || null,
+                notelp: document.getElementById('notelp').value.trim() || null,
+                nomorsk: document.getElementById('nomorsk').value.trim() || null,
                 tanggalsk: document.getElementById('tanggalsk').value || null,
                 tmt: document.getElementById('tmt').value || null,
                 tms: document.getElementById('tms').value || null,
@@ -382,11 +369,6 @@
                 }
             }
         }
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            await getUserSession();
-            await fetchPetugasData();
-        });
     </script>
 </body>
 </html>
