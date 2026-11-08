@@ -29,12 +29,7 @@
         </div>
     </div>
 
-    <!-- KOTAK DEBUGGER SESI (UNTUK MENGECEK NILAI SESI) -->
-    <div id="session-debug" class="alert alert-warning mb-3 small" role="alert">
-        <strong>Debug Sesi Aktif:</strong> <span id="debug-session-text">Memuat sesi...</span>
-    </div>
-
-    <!-- KOTAK DEBUGGER ERROR -->
+    <!-- KOTAK DEBUGGER -->
     <div id="debug-alert" class="alert alert-danger d-none mb-3 small" role="alert">
         <strong>Peringatan Sistem:</strong> <span id="debug-message"></span>
     </div>
@@ -188,15 +183,25 @@
                     
                     isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super') || email === 'haaziqnawraalfatih@gmail.com';
 
-                    // Tampilkan hasil pembacaan sesi di layar
-                    document.getElementById('debug-session-text').textContent = 
-                        `Nama: ${currentUserNama} | Role: ${localUser.role_access || '-'} | ID SPPG Sesi: [${currentUserIdsppg}] | IsSuper: ${isSuperAdmin}`;
-                } else {
-                    document.getElementById('debug-session-text').textContent = "Sesi 'sppg_user' tidak ditemukan di storage!";
+                    // PENGAMAN JIKA IDSPPG DI SESSION STORAGE KOSONG TAPI USERNAME/EMAIL ADA:
+                    // Ambil langsung dari tabel users_login berdasarkan email/username
+                    if (!isSuperAdmin && !currentUserIdsppg && (localUser.email || localUser.username)) {
+                        const targetEmail = localUser.email || localUser.username;
+                        const { data: userData } = await _supabase
+                            .from('users_login')
+                            .select('idsppg')
+                            .eq('username', targetEmail)
+                            .maybeSingle();
+                        
+                        if (userData && userData.idsppg) {
+                            currentUserIdsppg = userData.idsppg;
+                            localUser.idsppg = userData.idsppg;
+                            sessionStorage.setItem('sppg_user', JSON.stringify(localUser));
+                        }
+                    }
                 }
             } catch (err) {
                 console.error('Gagal membaca sesi user:', err);
-                document.getElementById('debug-session-text').textContent = "Error membaca sesi: " + err.message;
             }
         }
 
@@ -219,7 +224,8 @@
                 if (currentUserIdsppg) {
                     query = query.eq('idsppg', currentUserIdsppg);
                 } else {
-                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES_KARENA_KOSONG');
+                    // Jika tetap kosong, paksa cari berdasarkan teks jika ada, atau kosongkan hasil
+                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES');
                 }
             }
 
@@ -238,7 +244,7 @@
         function tampilkanDataKeTabel(data) {
             const tbody = document.getElementById('tablePetugasBody');
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data petugas yang sesuai dengan unit Anda (ID SPPG: ${currentUserIdsppg || 'Kosong'}).</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data petugas yang sesuai dengan unit Anda (ID SPPG: ${currentUserIdsppg || 'Tidak Terdeteksi'}).</td></tr>`;
                 updateTombolHapusMasal();
                 return;
             }
@@ -343,7 +349,7 @@
             btn.disabled = false; btn.textContent = 'Simpan Data';
         });
 
-        // Hapus Data
+        // Hapus Data (SOFT DELETE)
         async function hapusPetugas(id) {
             if (confirm('Yakin ingin menghapus data petugas ini?')) {
                 const { error } = await _supabase
@@ -359,6 +365,7 @@
             }
         }
 
+        // Hapus Masal (SOFT DELETE)
         async function hapusDataMasal() {
             const ids = Array.from(document.querySelectorAll('.check-item:checked')).map(cb => parseInt(cb.value));
             if (ids.length === 0) return;
