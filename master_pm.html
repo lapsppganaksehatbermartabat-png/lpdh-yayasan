@@ -16,6 +16,7 @@
         .bg-kalem-kecil { background-color: #eff6ff !important; border: 1px solid #bfdbfe !important; }
         .bg-kalem-besar { background-color: #fdf4ff !important; border: 1px solid #f5d0fe !important; }
         .bg-kalem-total { background-color: #f0fdf4 !important; border: 1px solid #bbf7d0 !important; }
+        .readonly-locked { background-color: #e9ecef !important; cursor: not-allowed; }
     </style>
 </head>
 <body class="p-4">
@@ -36,6 +37,11 @@
                 <i class="bi bi-plus-lg me-1"></i> Tambah PM
             </button>
         </div>
+    </div>
+
+    <!-- KOTAK DEBUGGER -->
+    <div id="debug-alert" class="alert alert-danger d-none mb-3 small" role="alert">
+        <strong>Peringatan Sistem:</strong> <span id="debug-message"></span>
     </div>
 
     <!-- Kotak Pencarian & Filter Bar -->
@@ -90,21 +96,22 @@
                 <div class="modal-body">
                     <form id="formTambahPM">
                         <div class="row g-3">
-                            <!-- Identitas Dasar (ID KPM otomatis terisi) -->
+                            <!-- Identitas Dasar -->
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold">ID KPM (Otomatis)</label>
                                 <input type="text" class="form-control form-control-sm bg-light" id="idkpm" readonly placeholder="Auto Generated">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold">ID SPPG</label>
-                                <input type="text" class="form-control form-control-sm" id="idsppg" placeholder="ID SPPG Terkait">
+                                <input type="text" class="form-control form-control-sm" id="idsppg" placeholder="ID SPPG Terkait" required>
+                                <small class="text-muted" id="infoIdsppg" style="font-size: 10px; display: none;">Terkunci sesuai akun Anda</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Nama Kelompok Penerima Manfaat</label>
                                 <input type="text" class="form-control form-control-sm" id="NamaKelompokPenerimamanfaat" required placeholder="Nama Sekolah / Posyandu / Komunitas">
                             </div>
 
-                            <!-- Klasifikasi Instansi (Dropdown) & Harga Terkunci -->
+                            <!-- Klasifikasi Instansi & Harga Terkunci -->
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Klasifikasi Instansi</label>
                                 <select class="form-select form-select-sm" id="klasifikasiinstansi" required>
@@ -292,8 +299,74 @@
 
     <script>
         let semuaDataPM = [];
+        let currentUserIdsppg = null;
+        let isSuperAdmin = false;
+        let currentUserNama = 'System';
 
-        // Generate ID KPM Otomatis saat Modal Dibuka
+        function showDebug(msg) {
+            const alertBox = document.getElementById('debug-alert');
+            const msgSpan = document.getElementById('debug-message');
+            msgSpan.textContent = msg;
+            alertBox.classList.remove('d-none');
+        }
+
+        // Jalankan saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', async () => {
+            await cekUser();
+            await fetchPMData();
+        });
+
+        // 1. Cek Sesi User (Multi-layered session reader)
+        async function cekUser() {
+            try {
+                let localUser = null;
+                try {
+                    localUser = JSON.parse(sessionStorage.getItem('sppg_user') || 'null');
+                } catch(err) {}
+
+                if (!localUser && window.parent && window.parent.sessionStorage) {
+                    try {
+                        localUser = JSON.parse(window.parent.sessionStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (!localUser) {
+                    try {
+                        localUser = JSON.parse(localStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (localUser) {
+                    currentUserIdsppg = localUser.idsppg;
+                    currentUserNama = localUser.nama_petugas || localUser.username || 'System';
+                    
+                    const role = String(localUser.role_access || '').toLowerCase();
+                    const jabatan = String(localUser.jabatan || '').toLowerCase();
+                    const email = String(localUser.username || localUser.email || '').toLowerCase();
+                    
+                    isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super') || email === 'haaziqnawraalfatih@gmail.com';
+
+                    if (!isSuperAdmin && !currentUserIdsppg && (localUser.email || localUser.username)) {
+                        const targetEmail = localUser.email || localUser.username;
+                        const { data: userData } = await _supabase
+                            .from('users_login')
+                            .select('idsppg')
+                            .eq('username', targetEmail)
+                            .maybeSingle();
+                        
+                        if (userData && userData.idsppg) {
+                            currentUserIdsppg = userData.idsppg;
+                            localUser.idsppg = userData.idsppg;
+                            sessionStorage.setItem('sppg_user', JSON.stringify(localUser));
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Gagal membaca sesi user:', err);
+            }
+        }
+
+        // Generate ID KPM Otomatis & Set ID SPPG saat Modal Dibuka
         const modalTambahEl = document.getElementById('modalTambahPM');
         modalTambahEl.addEventListener('show.bs.modal', function () {
             const randomId = 'KPM-' + Math.floor(1000 + Math.random() * 9000);
@@ -302,6 +375,20 @@
             document.getElementById('idkpm').value = randomId; 
             document.getElementById('hrgapaketkecil').value = 8000;
             document.getElementById('hrgapaketbesar').value = 10000;
+
+            if (!isSuperAdmin && currentUserIdsppg) {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.value = currentUserIdsppg;
+                inputIdsppg.readOnly = true;
+                inputIdsppg.classList.add('readonly-locked');
+                document.getElementById('infoIdsppg').style.display = 'block';
+            } else {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.readOnly = false;
+                inputIdsppg.classList.remove('readonly-locked');
+                document.getElementById('infoIdsppg').style.display = 'none';
+            }
+
             hitungOtomatis();
         });
 
@@ -328,17 +415,33 @@
             document.getElementById('labelJumlah').textContent = totalSemua;
         }
 
-        // 1. Ambil Data dari Supabase (Read dengan Soft Delete Filter)
+        // 2. Ambil Data dari Supabase (Read dengan Filter Akses Berdasarkan Sesi & Soft Delete)
         async function fetchPMData() {
             const tbody = document.getElementById('tablePMBody');
             
-            const { data, error } = await _supabase
+            if (typeof _supabase === 'undefined') {
+                showDebug("Objek '_supabase' tidak ditemukan.");
+                return;
+            }
+
+            let query = _supabase
                 .from('master_pm')
                 .select('*')
-                .is('deleted_at', null)
-                .order('id', { ascending: false });
+                .is('deleted_at', null);
+
+            // Jika BUKAN Super Admin, filter berdasarkan idsppg miliknya
+            if (!isSuperAdmin) {
+                if (currentUserIdsppg) {
+                    query = query.eq('idsppg', currentUserIdsppg);
+                } else {
+                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES');
+                }
+            }
+
+            const { data, error } = await query.order('id', { ascending: false });
 
             if (error) {
+                showDebug(`Error Supabase: ${error.message}`);
                 tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
                 return;
             }
@@ -347,12 +450,12 @@
             tampilkanDataKeTabel(semuaDataPM);
         }
 
-        // 2. Tampilkan Data ke Tabel HTML
+        // 3. Tampilkan Data ke Tabel HTML
         function tampilkanDataKeTabel(data) {
             const tbody = document.getElementById('tablePMBody');
             
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data penerima manfaat yang ditemukan.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data penerima manfaat yang ditemukan untuk unit Anda.</td></tr>`;
                 updateTombolHapusMasal();
                 return;
             }
@@ -369,7 +472,7 @@
                         </td>
                         <td>${index + 1}</td>
                         <td><span class="badge bg-light text-dark border">${item.idkpm || '-'}</span></td>
-                        <td>${item.idsppg || '-'}</td>
+                        <td><span class="fw-semibold text-primary">${item.idsppg || '-'}</span></td>
                         <td class="fw-semibold">
                             <a href="javascript:void(0);" onclick='bukaDetailPM(${JSON.stringify(item)})' class="text-primary text-decoration-none" title="Klik untuk lihat detail">
                                 ${item.NamaKelompokPenerimamanfaat || '-'}
@@ -417,7 +520,7 @@
             modalDetail.show();
         }
 
-        // 3. Pencarian Berdasarkan Nama Kelompok / ID KPM
+        // 4. Pencarian Berdasarkan Nama Kelompok / ID KPM
         function filterDataPM() {
             const keyword = document.getElementById('inputPencarian').value.toLowerCase();
             const hasilFilter = semuaDataPM.filter(item => {
@@ -434,14 +537,14 @@
             tampilkanDataKeTabel(semuaDataPM);
         }
 
-        // 4. Pilih Semua (Check All)
+        // 5. Pilih Semua (Check All)
         function pilihSemuaBaris(masterCheckbox) {
             const checkboxes = document.querySelectorAll('.check-item');
             checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
             updateTombolHapusMasal();
         }
 
-        // 5. Update Tombol Hapus Masal
+        // 6. Update Tombol Hapus Masal
         function updateTombolHapusMasal() {
             const checkboxes = document.querySelectorAll('.check-item:checked');
             const btnHapus = document.getElementById('btnHapusMasal');
@@ -456,7 +559,7 @@
             }
         }
 
-        // 6. Soft Delete Satuan
+        // 7. Soft Delete Satuan
         async function hapusPM(idkpm) {
             if (confirm('Yakin ingin menghapus data kelompok PM ini?')) {
                 const waktuHapus = new Date().toISOString();
@@ -464,7 +567,7 @@
                     .from('master_pm')
                     .update({ 
                         deleted_at: waktuHapus, 
-                        deleted_by: 'Admin' 
+                        deleted_by: currentUserNama 
                     })
                     .eq('idkpm', idkpm);
 
@@ -476,7 +579,7 @@
             }
         }
 
-        // 7. Soft Delete Masal
+        // 8. Soft Delete Masal
         async function hapusDataMasal() {
             const checkboxes = document.querySelectorAll('.check-item:checked');
             const idsToDelete = Array.from(checkboxes).map(cb => cb.value);
@@ -489,7 +592,7 @@
                     .from('master_pm')
                     .update({ 
                         deleted_at: waktuHapus, 
-                        deleted_by: 'Admin' 
+                        deleted_by: currentUserNama 
                     })
                     .in('idkpm', idsToDelete);
 
@@ -502,7 +605,7 @@
             }
         }
 
-        // 8. Simpan Data Baru (Create)
+        // 9. Simpan Data Baru (Create)
         document.getElementById('formTambahPM').addEventListener('submit', async function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSimpanPM');
@@ -527,8 +630,8 @@
 
             const payload = {
                 idkpm: document.getElementById('idkpm').value,
-                idsppg: document.getElementById('idsppg').value,
-                NamaKelompokPenerimamanfaat: document.getElementById('NamaKelompokPenerimamanfaat').value,
+                idsppg: document.getElementById('idsppg').value.trim(),
+                NamaKelompokPenerimamanfaat: document.getElementById('NamaKelompokPenerimamanfaat').value.trim(),
                 klasifikasiinstansi: document.getElementById('klasifikasiinstansi').value,
                 hrgapaketkecil: 8000,
                 hrgapaketbesar: 10000,
@@ -545,7 +648,7 @@
                 kecil: totalKecil,
                 besar: totalBesar,
                 jumlah: totalSemua,
-                create_by: 'Admin'
+                create_by: currentUserNama
             };
 
             const { error } = await _supabase.from('master_pm').insert([payload]);
@@ -563,9 +666,6 @@
             btn.disabled = false;
             btn.textContent = 'Simpan Data';
         });
-
-        // Jalankan saat halaman dimuat
-        fetchPMData();
     </script>
 </body>
 </html>
