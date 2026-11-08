@@ -183,8 +183,6 @@
                     
                     isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super') || email === 'haaziqnawraalfatih@gmail.com';
 
-                    // PENGAMAN JIKA IDSPPG DI SESSION STORAGE KOSONG TAPI USERNAME/EMAIL ADA:
-                    // Ambil langsung dari tabel users_login berdasarkan email/username
                     if (!isSuperAdmin && !currentUserIdsppg && (localUser.email || localUser.username)) {
                         const targetEmail = localUser.email || localUser.username;
                         const { data: userData } = await _supabase
@@ -219,12 +217,10 @@
                 .select('*')
                 .is('deleted_at', null);
 
-            // JIKA BUKAN SUPER ADMIN, FILTER BERDASARKAN IDSPPG MILIK USER TERSEBUT
             if (!isSuperAdmin) {
                 if (currentUserIdsppg) {
                     query = query.eq('idsppg', currentUserIdsppg);
                 } else {
-                    // Jika tetap kosong, paksa cari berdasarkan teks jika ada, atau kosongkan hasil
                     query = query.eq('idsppg', 'TIDAK_ADA_AKSES');
                 }
             }
@@ -317,7 +313,6 @@
             }
         });
 
-        // Simpan Data
         document.getElementById('formTambahPetugas').addEventListener('submit', async function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSimpanPetugas');
@@ -349,7 +344,6 @@
             btn.disabled = false; btn.textContent = 'Simpan Data';
         });
 
-        // Hapus Data (SOFT DELETE)
         async function hapusPetugas(id) {
             if (confirm('Yakin ingin menghapus data petugas ini?')) {
                 const { error } = await _supabase
@@ -365,7 +359,6 @@
             }
         }
 
-        // Hapus Masal (SOFT DELETE)
         async function hapusDataMasal() {
             const ids = Array.from(document.querySelectorAll('.check-item:checked')).map(cb => parseInt(cb.value));
             if (ids.length === 0) return;
