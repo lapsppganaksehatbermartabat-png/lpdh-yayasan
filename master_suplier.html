@@ -13,6 +13,7 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
         .card { border: 1px solid #e2e8f0; border-radius: 0.5rem; }
+        .readonly-locked { background-color: #e9ecef !important; cursor: not-allowed; }
     </style>
 </head>
 <body class="p-4">
@@ -29,10 +30,15 @@
                 <i class="bi bi-trash3 me-1"></i> Hapus Terpilih (<span id="countTerpilih">0</span>)
             </button>
             <!-- Tombol Tambah Suplier -->
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahSuplier">
+            <button class="btn btn-primary btn-sm" onclick="bukaModalTambah()">
                 <i class="bi bi-plus-lg me-1"></i> Tambah Suplier
             </button>
         </div>
+    </div>
+
+    <!-- KOTAK DEBUGGER -->
+    <div id="debug-alert" class="alert alert-danger d-none mb-3 small" role="alert">
+        <strong>Peringatan Sistem:</strong> <span id="debug-message"></span>
     </div>
 
     <!-- Kotak Pencarian & Filter Bar -->
@@ -59,7 +65,7 @@
                             <th>No</th>
                             <th>ID Suplier</th>
                             <th>ID SPPG</th>
-                            <th>Nama Suplier</th>
+                            <th>Nama Suplier (Klik untuk Edit)</th>
                             <th>Kontak / Telp</th>
                             <th>Wilayah / Alamat</th>
                             <th>Info Rekening Bank</th>
@@ -76,16 +82,16 @@
         </div>
     </div>
 
-    <!-- MODAL TAMBAH SUPLIER -->
-    <div class="modal fade" id="modalTambahSuplier" tabindex="-1">
+    <!-- MODAL FORM (TAMBAH / EDIT SUPLIER) -->
+    <div class="modal fade" id="modalFormSuplier" tabindex="-1">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-shop me-2 text-primary"></i>Tambah Master Suplier Baru</h5>
+                    <h5 class="modal-title fw-bold fs-6" id="modalTitle"><i class="bi bi-shop me-2 text-primary"></i>Tambah Master Suplier Baru</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="formTambahSuplier">
+                    <form id="formSuplier">
                         <div class="row g-3">
                             <!-- Identitas -->
                             <div class="col-md-4">
@@ -94,7 +100,8 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold">ID SPPG</label>
-                                <input type="text" class="form-control form-control-sm" id="idsppg" placeholder="ID SPPG Terkait">
+                                <input type="text" class="form-control form-control-sm" id="idsppg" placeholder="ID SPPG Terkait" required>
+                                <small class="text-muted" id="infoIdsppg" style="font-size: 10px; display: none;">Terkunci sesuai akun Anda</small>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold">Nama Suplier</label>
@@ -165,18 +172,167 @@
 
     <script>
         let semuaDataSuplier = [];
+        let currentUserIdsppg = null;
+        let isSuperAdmin = false;
+        let currentUserNama = 'System';
+        let modalFormInstance = null;
+        let isEditMode = false;
 
-        // 1. Fungsi Ambil Data dari Supabase (Read dengan Soft Delete Filter)
+        function showDebug(msg) {
+            const alertBox = document.getElementById('debug-alert');
+            const msgSpan = document.getElementById('debug-message');
+            msgSpan.textContent = msg;
+            alertBox.classList.remove('d-none');
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            modalFormInstance = new bootstrap.Modal(document.getElementById('modalFormSuplier'));
+            await cekUser();
+            await fetchSuplierData();
+        });
+
+        // Cek Sesi User
+        async function cekUser() {
+            try {
+                let localUser = null;
+                try {
+                    localUser = JSON.parse(sessionStorage.getItem('sppg_user') || 'null');
+                } catch(err) {}
+
+                if (!localUser && window.parent && window.parent.sessionStorage) {
+                    try {
+                        localUser = JSON.parse(window.parent.sessionStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (!localUser) {
+                    try {
+                        localUser = JSON.parse(localStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (localUser) {
+                    currentUserIdsppg = localUser.idsppg;
+                    currentUserNama = localUser.nama_petugas || localUser.username || 'System';
+                    
+                    const role = String(localUser.role_access || '').toLowerCase();
+                    const jabatan = String(localUser.jabatan || '').toLowerCase();
+                    const email = String(localUser.username || localUser.email || '').toLowerCase();
+                    
+                    isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super') || email === 'haaziqnawraalfatih@gmail.com';
+
+                    if (!isSuperAdmin && !currentUserIdsppg && (localUser.email || localUser.username)) {
+                        const targetEmail = localUser.email || localUser.username;
+                        const { data: userData } = await _supabase
+                            .from('users_login')
+                            .select('idsppg')
+                            .eq('username', targetEmail)
+                            .maybeSingle();
+                        
+                        if (userData && userData.idsppg) {
+                            currentUserIdsppg = userData.idsppg;
+                            localUser.idsppg = userData.idsppg;
+                            sessionStorage.setItem('sppg_user', JSON.stringify(localUser));
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Gagal membaca sesi user:', err);
+            }
+        }
+
+        // Buka Modal Tambah Suplier
+        function bukaModalTambah() {
+            isEditMode = false;
+            document.getElementById('formSuplier').reset();
+            document.getElementById('idsuplier').readOnly = false;
+            document.getElementById('idsuplier').classList.remove('readonly-locked');
+            document.getElementById('modalTitle').innerHTML = '<i class="bi bi-shop me-2 text-primary"></i>Tambah Master Suplier Baru';
+            document.getElementById('btnSimpanSuplier').textContent = 'Simpan Data';
+
+            if (!isSuperAdmin && currentUserIdsppg) {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.value = currentUserIdsppg;
+                inputIdsppg.readOnly = true;
+                inputIdsppg.classList.add('readonly-locked');
+                document.getElementById('infoIdsppg').style.display = 'block';
+            } else {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.readOnly = false;
+                inputIdsppg.classList.remove('readonly-locked');
+                document.getElementById('infoIdsppg').style.display = 'none';
+            }
+
+            modalFormInstance.show();
+        }
+
+        // Buka Modal Edit Suplier (Dipicu saat nama suplier diklik)
+        function bukaModalEdit(idsuplier) {
+            isEditMode = true;
+            const item = semuaDataSuplier.find(d => d.idsuplier === idsuplier);
+            if (!item) return;
+
+            document.getElementById('modalTitle').innerHTML = '<i class="bi bi-pencil-square me-2 text-primary"></i>Edit Master Suplier';
+            document.getElementById('btnSimpanSuplier').textContent = 'Perbarui Data';
+
+            document.getElementById('idsuplier').value = item.idsuplier || '';
+            document.getElementById('idsuplier').readOnly = true; // ID suplier dikunci saat edit
+            document.getElementById('idsuplier').classList.add('readonly-locked');
+
+            document.getElementById('idsppg').value = item.idsppg || item.id_sppg || item.IDSppg || '';
+            document.getElementById('namasuplier').value = item.namasuplier || '';
+            document.getElementById('alamat').value = item.alamat || '';
+            document.getElementById('alamatlengkap').value = item.alamatlengkap || '';
+            document.getElementById('desa').value = item.desa || '';
+            document.getElementById('kecamatan').value = item.kecamatan || '';
+            document.getElementById('kabupaten').value = item.kabupaten || '';
+            document.getElementById('propinsi').value = item.propinsi || '';
+            document.getElementById('nomortelp').value = item.nomortelp || '';
+            document.getElementById('namabank').value = item.namabank || '';
+            document.getElementById('nomorrekening').value = item.nomorrekening || '';
+            document.getElementById('namadirekening').value = item.namadirekening || '';
+
+            if (!isSuperAdmin && currentUserIdsppg) {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.readOnly = true;
+                inputIdsppg.classList.add('readonly-locked');
+                document.getElementById('infoIdsppg').style.display = 'block';
+            } else {
+                const inputIdsppg = document.getElementById('idsppg');
+                inputIdsppg.readOnly = false;
+                inputIdsppg.classList.remove('readonly-locked');
+                document.getElementById('infoIdsppg').style.display = 'none';
+            }
+
+            modalFormInstance.show();
+        }
+
+        // 1. Fungsi Ambil Data dari Supabase (Read dengan Filter Sesi)
         async function fetchSuplierData() {
             const tbody = document.getElementById('tableSuplierBody');
             
-            const { data, error } = await _supabase
+            if (typeof _supabase === 'undefined') {
+                showDebug("Objek '_supabase' tidak ditemukan.");
+                return;
+            }
+
+            let query = _supabase
                 .from('master_suplier')
                 .select('*')
-                .is('deleted_at', null)
-                .order('idsuplier', { ascending: false });
+                .is('deleted_at', null);
+
+            if (!isSuperAdmin) {
+                if (currentUserIdsppg) {
+                    query = query.eq('idsppg', currentUserIdsppg);
+                } else {
+                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES');
+                }
+            }
+
+            const { data, error } = await query.order('idsuplier', { ascending: false });
 
             if (error) {
+                showDebug(`Error Supabase: ${error.message}`);
                 tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
                 return;
             }
@@ -190,13 +346,15 @@
             const tbody = document.getElementById('tableSuplierBody');
             
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data suplier yang ditemukan.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data suplier yang ditemukan untuk unit Anda.</td></tr>`;
                 updateTombolHapusMasal();
                 return;
             }
 
             let html = '';
             data.forEach((item, index) => {
+                const displayIdsppg = item.idsppg || item.id_sppg || item.IDSppg || '-';
+                
                 html += `
                     <tr>
                         <td class="text-center">
@@ -204,12 +362,19 @@
                         </td>
                         <td>${index + 1}</td>
                         <td><span class="badge bg-light text-dark border">${item.idsuplier || '-'}</span></td>
-                        <td>${item.idsppg || '-'}</td>
-                        <td class="fw-semibold">${item.namasuplier || '-'}</td>
+                        <td><span class="fw-semibold text-primary">${displayIdsppg}</span></td>
+                        <td class="fw-semibold">
+                            <a href="javascript:void(0);" onclick="bukaModalEdit('${item.idsuplier}')" class="text-primary text-decoration-none" title="Klik untuk edit data">
+                                ${item.namasuplier || '-'}
+                            </a>
+                        </td>
                         <td>${item.nomortelp || '-'}</td>
                         <td>${item.kabupaten || '-'}<br><small class="text-muted">${item.alamat || '-'}</small></td>
                         <td><small><b>Bank:</b> ${item.namabank || '-'}<br><b>No. Rek:</b> ${item.nomorrekening || '-'}<br><b>A/N:</b> ${item.namadirekening || '-'}</small></td>
                         <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="bukaModalEdit('${item.idsuplier}')" title="Edit Data">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-danger" onclick="hapusSuplier('${item.idsuplier}')" title="Hapus Data">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -268,13 +433,14 @@
                     .from('master_suplier')
                     .update({ 
                         deleted_at: waktuHapus, 
-                        deleted_by: 'Admin' 
+                        deleted_by: currentUserNama 
                     })
                     .eq('idsuplier', idsuplier);
 
                 if (error) {
                     alert('Gagal menghapus: ' + error.message);
                 } else {
+                    alert('Data suplier berhasil dihapus!');
                     fetchSuplierData();
                 }
             }
@@ -293,64 +459,71 @@
                     .from('master_suplier')
                     .update({ 
                         deleted_at: waktuHapus, 
-                        deleted_by: 'Admin' 
+                        deleted_by: currentUserNama 
                     })
                     .in('idsuplier', idsToDelete);
 
                 if (error) {
                     alert('Gagal menghapus data masal: ' + error.message);
                 } else {
+                    alert('Data suplier terpilih berhasil dihapus!');
                     document.getElementById('checkAll').checked = false;
                     fetchSuplierData();
                 }
             }
         }
 
-        // 8. Fungsi Simpan Data Baru ke Supabase (Create)
-        document.getElementById('formTambahSuplier').addEventListener('submit', async function(e) {
+        // 8. Fungsi Simpan Data (Create / Update)
+        document.getElementById('formSuplier').addEventListener('submit', async function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSimpanSuplier');
             btn.disabled = true;
             btn.textContent = 'Menyimpan...';
 
+            const idsuplierVal = document.getElementById('idsuplier').value.trim();
+
             const payload = {
-                idsuplier: document.getElementById('idsuplier').value,
-                idsppg: document.getElementById('idsppg').value,
-                namasuplier: document.getElementById('namasuplier').value,
-                alamat: document.getElementById('alamat').value,
-                alamatlengkap: document.getElementById('alamatlengkap').value,
-                desa: document.getElementById('desa').value,
-                kecamatan: document.getElementById('kecamatan').value,
-                kabupaten: document.getElementById('kabupaten').value,
-                propinsi: document.getElementById('propinsi').value,
-                nomortelp: document.getElementById('nomortelp').value,
-                namabank: document.getElementById('namabank').value,
-                nomorrekening: document.getElementById('nomorrekening').value,
-                namadirekening: document.getElementById('namadirekening').value,
-                create_by: 'Admin'
+                idsppg: document.getElementById('idsppg').value.trim(),
+                namasuplier: document.getElementById('namasuplier').value.trim(),
+                alamat: document.getElementById('alamat').value.trim(),
+                alamatlengkap: document.getElementById('alamatlengkap').value.trim(),
+                desa: document.getElementById('desa').value.trim(),
+                kecamatan: document.getElementById('kecamatan').value.trim(),
+                kabupaten: document.getElementById('kabupaten').value.trim(),
+                propinsi: document.getElementById('propinsi').value.trim(),
+                nomortelp: document.getElementById('nomortelp').value.trim(),
+                namabank: document.getElementById('namabank').value.trim(),
+                nomorrekening: document.getElementById('nomorrekening').value.trim(),
+                namadirekening: document.getElementById('namadirekening').value.trim()
             };
 
-            const { error } = await _supabase.from('master_suplier').insert([payload]);
+            let error;
+
+            if (isEditMode) {
+                // UPDATE DATA
+                payload.edit_at = new Date().toISOString();
+                payload.edit_by = currentUserNama;
+                const res = await _supabase.from('master_suplier').update(payload).eq('idsuplier', idsuplierVal);
+                error = res.error;
+            } else {
+                // INSERT DATA BARU
+                payload.idsuplier = idsuplierVal;
+                payload.create_by = currentUserNama;
+                const res = await _supabase.from('master_suplier').insert([payload]);
+                error = res.error;
+            }
 
             if (error) {
                 alert('Gagal menyimpan: ' + error.message);
             } else {
-                // Tutup Modal dan Reset Form
-                const modalEl = document.getElementById('modalTambahSuplier');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                modal.hide();
-                document.getElementById('formTambahSuplier').reset();
-                
-                // Refresh Data Tabel
+                alert(isEditMode ? 'Berhasil memperbarui data suplier!' : 'Berhasil menambahkan suplier baru!');
+                modalFormInstance.hide();
                 fetchSuplierData();
             }
 
             btn.disabled = false;
-            btn.textContent = 'Simpan Data';
+            btn.textContent = isEditMode ? 'Perbarui Data' : 'Simpan Data';
         });
-
-        // Jalankan pemanggilan data saat halaman dibuka
-        fetchSuplierData();
     </script>
 </body>
 </html>
