@@ -24,6 +24,10 @@
             <p class="text-muted small mb-0">Kelola katalog bahan baku, harga satuan, dan suplier</p>
         </div>
         <div>
+            <!-- Tombol Duplikasi Barang -->
+            <button class="btn btn-outline-success btn-sm me-2" id="btnDuplikasi" onclick="duplikasiBarang()" disabled>
+                <i class="bi bi-files me-1"></i> Duplikasi Barang
+            </button>
             <!-- Tombol Hapus Masal -->
             <button class="btn btn-outline-danger btn-sm me-2" id="btnHapusMasal" onclick="hapusDataMasal()" disabled>
                 <i class="bi bi-trash3 me-1"></i> Hapus Terpilih (<span id="countTerpilih">0</span>)
@@ -83,7 +87,7 @@
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-box-seam me-2 text-primary"></i>Tambah Master Barang Baru</h5>
+                    <h5 class="modal-title fw-bold fs-6" id="modalTitle"><i class="bi bi-box-seam me-2 text-primary"></i>Tambah Master Barang Baru</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -186,6 +190,13 @@
     <script>
         let semuaDataBarang = [];
         let dataMasterSuplier = [];
+        let modalTambahInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            modalTambahInstance = new bootstrap.Modal(document.getElementById('modalTambahBarang'));
+            loadDropdownData();
+            fetchBarangData();
+        });
 
         // 1. Fungsi Ambil Data dari Supabase (Read)
         async function fetchBarangData() {
@@ -291,19 +302,71 @@
             }
         }
 
-        function bukaModalTambah() {
+        async function bukaModalTambah() {
             document.getElementById('formTambahBarang').reset();
-            generateIdBarang();
+            document.getElementById('modalTitle').innerHTML = '<i class="bi bi-box-seam me-2 text-primary"></i>Tambah Master Barang Baru';
+            document.getElementById('btnSimpanBarang').textContent = 'Simpan Data';
+            await generateIdBarang();
             document.getElementById('tanggalupdateharga').valueAsDate = new Date();
         }
 
-        // 5. Fungsi Render / Tampilkan Data ke Tabel HTML
+        // 5. Fitur Duplikasi Barang Terpilih
+        async function duplikasiBarang() {
+            const checkedBoxes = document.querySelectorAll('.check-item:checked');
+            
+            if (checkedBoxes.length === 0) {
+                alert('Silakan centang satu barang yang ingin diduplikasi.');
+                return;
+            }
+            if (checkedBoxes.length > 1) {
+                alert('Peringatan: Anda memilih lebih dari 1 barang! Harap pilih hanya 1 barang saja untuk diduplikasi.');
+                return;
+            }
+
+            const selectedId = parseInt(checkedBoxes[0].value);
+            const item = semuaDataBarang.find(d => d.idbarang === selectedId);
+
+            if (!item) {
+                alert('Data barang tidak ditemukan.');
+                return;
+            }
+
+            // Reset Form & Ubah Judul Modal
+            document.getElementById('formTambahBarang').reset();
+            document.getElementById('modalTitle').innerHTML = '<i class="bi bi-files me-2 text-success"></i>Duplikasi Master Barang (Input Harga Baru)';
+            document.getElementById('btnSimpanBarang').textContent = 'Simpan Data Baru';
+
+            // Generate ID Barang Baru Otomatis
+            await generateIdBarang();
+
+            // Masukkan data barang lama ke form input
+            document.getElementById('idsppg').value = item.idsppg || '';
+            document.getElementById('namabarang').value = item.namabarang || '';
+            document.getElementById('jenisbelanja').value = item.jenisbelanja || '';
+            document.getElementById('kategoribahan').value = item.kategoribahan || '';
+            document.getElementById('kategorilpdh').value = item.kategorilpdh || '';
+            document.getElementById('satuan').value = item.satuan || '';
+            
+            // Kolom harga & tanggal dikosongkan sesuai permintaan agar diisi harga baru
+            document.getElementById('hargasatuan').value = '';
+            document.getElementById('tanggalupdateharga').valueAsDate = new Date();
+
+            // Set Suplier & Trigger Info Suplier Otomatis
+            const selectSuplier = document.getElementById('namasuplier');
+            selectSuplier.value = item.namasuplier || '';
+            pilihSuplier(selectSuplier);
+
+            // Munculkan Modal
+            modalTambahInstance.show();
+        }
+
+        // 6. Fungsi Render / Tampilkan Data ke Tabel HTML
         function tampilkanDataKeTabel(data) {
             const tbody = document.getElementById('tableBarangBody');
             
             if (data.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">Tidak ada data barang yang ditemukan.</td></tr>`;
-                updateTombolHapusMasal();
+                updateTombolAksiBawah();
                 return;
             }
 
@@ -314,7 +377,7 @@
                 html += `
                     <tr>
                         <td class="text-center">
-                            <input type="checkbox" class="form-check-input check-item" value="${item.idbarang}" onchange="updateTombolHapusMasal()">
+                            <input type="checkbox" class="form-check-input check-item" value="${item.idbarang}" onchange="updateTombolAksiBawah()">
                         </td>
                         <td>${index + 1}</td>
                         <td><span class="badge bg-light text-dark border">${item.idbarang || '-'}</span></td>
@@ -334,10 +397,10 @@
                 `;
             });
             tbody.innerHTML = html;
-            updateTombolHapusMasal();
+            updateTombolAksiBawah();
         }
 
-        // 6. Fungsi Filter / Pencarian
+        // 7. Fungsi Filter / Pencarian
         function filterDataBarang() {
             const keyword = document.getElementById('inputPencarian').value.toLowerCase();
             const hasilFilter = semuaDataBarang.filter(item => {
@@ -354,29 +417,38 @@
             tampilkanDataKeTabel(semuaDataBarang);
         }
 
-        // 7. Fitur Pilih Semua (Check All)
+        // 8. Fitur Pilih Semua (Check All)
         function pilihSemuaBaris(masterCheckbox) {
             const checkboxes = document.querySelectorAll('.check-item');
             checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
-            updateTombolHapusMasal();
+            updateTombolAksiBawah();
         }
 
-        // 8. Update Status Tombol Hapus Masal
-        function updateTombolHapusMasal() {
+        // 9. Update Status Tombol Hapus Masal & Duplikasi
+        function updateTombolAksiBawah() {
             const checkboxes = document.querySelectorAll('.check-item:checked');
             const btnHapus = document.getElementById('btnHapusMasal');
+            const btnDuplikasi = document.getElementById('btnDuplikasi');
             const countSpan = document.getElementById('countTerpilih');
             
-            countSpan.textContent = checkboxes.length;
-            if (checkboxes.length > 0) {
+            const count = checkboxes.length;
+            countSpan.textContent = count;
+
+            if (count > 0) {
                 btnHapus.removeAttribute('disabled');
             } else {
                 btnHapus.setAttribute('disabled', 'true');
                 document.getElementById('checkAll').checked = false;
             }
+
+            if (count === 1) {
+                btnDuplikasi.removeAttribute('disabled');
+            } else {
+                btnDuplikasi.setAttribute('disabled', 'true');
+            }
         }
 
-        // 9. Fungsi Hapus Satuan (Soft Delete)
+        // 10. Fungsi Hapus Satuan (Soft Delete)
         async function hapusBarang(idbarang) {
             if (confirm('Yakin ingin menghapus data barang ini?')) {
                 const waktuHapus = new Date().toISOString();
@@ -396,7 +468,7 @@
             }
         }
 
-        // 10. Fungsi Hapus Masal (Bulk Delete)
+        // 11. Fungsi Hapus Masal (Bulk Delete)
         async function hapusDataMasal() {
             const checkboxes = document.querySelectorAll('.check-item:checked');
             const idsToDelete = Array.from(checkboxes).map(cb => parseInt(cb.value));
@@ -422,7 +494,7 @@
             }
         }
 
-        // 11. Fungsi Simpan Data Baru ke Supabase (Create) - idbarang dikonversi ke integer
+        // 12. Fungsi Simpan Data Baru ke Supabase (Create)
         document.getElementById('formTambahBarang').addEventListener('submit', async function(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSimpanBarang');
@@ -431,7 +503,7 @@
 
             try {
                 const payload = {
-                    idbarang: parseInt(document.getElementById('idbarang').value) || 1, // Pastikan berupa angka bulat
+                    idbarang: parseInt(document.getElementById('idbarang').value) || 1,
                     idsppg: document.getElementById('idsppg').value,
                     namabarang: document.getElementById('namabarang').value,
                     jenisbelanja: document.getElementById('jenisbelanja').value,
@@ -453,9 +525,7 @@
 
                 if (error) throw error;
 
-                const modalEl = document.getElementById('modalTambahBarang');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                modal.hide();
+                modalTambahInstance.hide();
                 fetchBarangData();
 
             } catch (err) {
@@ -466,9 +536,6 @@
                 btn.textContent = 'Simpan Data';
             }
         });
-
-        loadDropdownData();
-        fetchBarangData();
     </script>
 </body>
 </html>
