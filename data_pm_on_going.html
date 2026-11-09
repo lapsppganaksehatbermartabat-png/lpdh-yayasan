@@ -34,6 +34,11 @@
         </div>
     </div>
 
+    <!-- KOTAK DEBUGGER -->
+    <div id="debug-alert" class="alert alert-danger d-none mb-3 small" role="alert">
+        <strong>Peringatan Sistem:</strong> <span id="debug-message"></span>
+    </div>
+
     <!-- Kotak Filter Tanggal & Pencarian Bar -->
     <div class="card shadow-sm bg-white mb-3">
         <div class="card-body py-3">
@@ -76,7 +81,7 @@
                             <th>Tgl Update</th>
                             <th>ID KPM</th>
                             <th>ID SPPG</th>
-                            <th>Nama Kelompok PM</th>
+                            <th>Nama Kelompok PM (Klik untuk Edit)</th>
                             <th>Klasifikasi Instansi</th>
                             <th>Kelompok Kecil / Besar</th>
                             <th>Total Kuota</th>
@@ -220,19 +225,88 @@
 
     <script>
         let semuaDataOnGoing = [];
+        let currentUserIdsppg = null;
+        let isSuperAdmin = false;
+        let currentUserNama = 'System';
+        let modalEditInstance = null;
+
+        function showDebug(msg) {
+            const alertBox = document.getElementById('debug-alert');
+            const msgSpan = document.getElementById('debug-message');
+            msgSpan.textContent = msg;
+            alertBox.classList.remove('d-none');
+        }
+
+        // Jalankan saat halaman dibuka
+        document.addEventListener('DOMContentLoaded', async () => {
+            modalEditInstance = new bootstrap.Modal(document.getElementById('modalEditPM'));
+            await cekUser();
+            await fetchOnGoingData();
+        });
+
+        // Cek Sesi User
+        async function cekUser() {
+            try {
+                let localUser = null;
+                try {
+                    localUser = JSON.parse(sessionStorage.getItem('sppg_user') || 'null');
+                } catch(err) {}
+
+                if (!localUser && window.parent && window.parent.sessionStorage) {
+                    try {
+                        localUser = JSON.parse(window.parent.sessionStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (!localUser) {
+                    try {
+                        localUser = JSON.parse(localStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (localUser) {
+                    currentUserIdsppg = localUser.idsppg;
+                    currentUserNama = localUser.nama_petugas || localUser.username || 'System';
+                    
+                    const role = String(localUser.role_access || '').toLowerCase();
+                    const jabatan = String(localUser.jabatan || '').toLowerCase();
+                    const email = String(localUser.username || localUser.email || '').toLowerCase();
+                    
+                    isSuperAdmin = role === 'superadmin' || role === 'admin' || role === 'editor' || jabatan.includes('super') || email === 'haaziqnawraalfatih@gmail.com';
+                }
+            } catch (err) {
+                console.error('Gagal membaca sesi user:', err);
+            }
+        }
 
         // 1. Ambil Data dari Supabase
         async function fetchOnGoingData() {
             const tbody = document.getElementById('tableOnGoingBody');
             
-            const { data, error } = await _supabase
+            if (typeof _supabase === 'undefined') {
+                showDebug("Objek '_supabase' tidak ditemukan.");
+                return;
+            }
+
+            let query = _supabase
                 .from('data_pm_on_going')
                 .select('*')
-                .is('deleted_at', null)
+                .is('deleted_at', null);
+
+            if (!isSuperAdmin) {
+                if (currentUserIdsppg) {
+                    query = query.eq('idsppg', currentUserIdsppg);
+                } else {
+                    query = query.eq('idsppg', 'TIDAK_ADA_AKSES');
+                }
+            }
+
+            const { data, error } = await query
                 .order('tanggalupdate', { ascending: false })
                 .order('id', { ascending: false });
 
             if (error) {
+                showDebug(`Error Supabase: ${error.message}`);
                 tbody.innerHTML = `<tr><td colspan="10" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
                 return;
             }
@@ -254,7 +328,8 @@
             let html = '';
             data.forEach((item, index) => {
                 const tglFormatted = item.tanggalupdate ? new Date(item.tanggalupdate).toLocaleDateString('id-ID') : '-';
-                
+                const displayIdsppg = item.idsppg || item.id_sppg || item.IDSppg || '-';
+
                 html += `
                     <tr>
                         <td class="text-center">
@@ -263,9 +338,9 @@
                         <td>${index + 1}</td>
                         <td><span class="badge bg-light text-dark border">${tglFormatted}</span></td>
                         <td><span class="badge bg-light text-dark border">${item.idkpm || '-'}</span></td>
-                        <td>${item.idsppg || '-'}</td>
+                        <td><span class="fw-semibold text-primary">${displayIdsppg}</span></td>
                         <td class="fw-semibold">
-                            <a href="javascript:void(0);" onclick='bukaEditPM(${JSON.stringify(item)})' class="text-primary text-decoration-none" title="Klik untuk lihat detail / edit">
+                            <a href="javascript:void(0);" onclick='bukaEditPM(${JSON.stringify(item)})' class="text-primary text-decoration-none" title="Klik untuk edit data">
                                 ${item.NamaKelompokPenerimamanfaat || '-'}
                             </a>
                         </td>
@@ -273,6 +348,9 @@
                         <td><small><b>Kecil:</b> ${item.kecil || 0}<br><b>Besar:</b> ${item.besar || 0}</small></td>
                         <td class="fw-bold text-success">${item.jumlah || 0} Orang</td>
                         <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick='bukaEditPM(${JSON.stringify(item)})' title="Edit Data">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-danger" onclick="hapusOnGoingSingle(${item.id})" title="Hapus Data">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -315,7 +393,7 @@
             document.getElementById('edit_record_id').value = item.id;
             document.getElementById('edit_tanggalupdate').value = item.tanggalupdate || '-';
             document.getElementById('edit_idkpm').value = item.idkpm || '-';
-            document.getElementById('edit_idsppg').value = item.idsppg || '-';
+            document.getElementById('edit_idsppg').value = item.idsppg || item.id_sppg || item.IDSppg || '-';
             document.getElementById('edit_klasifikasiinstansi').value = item.klasifikasiinstansi || '-';
             document.getElementById('edit_NamaKelompokPenerimamanfaat').value = item.NamaKelompokPenerimamanfaat || '';
 
@@ -332,9 +410,7 @@
             document.getElementById('edit_PTK_Kaderbesar').value = item['PTK/Kaderbesar'] || 0;
 
             hitungOtomatisEdit();
-
-            const modalEdit = new bootstrap.Modal(document.getElementById('modalEditPM'));
-            modalEdit.show();
+            modalEditInstance.show();
         }
 
         // 5. Kalkulasi Otomatis di Modal Edit
@@ -367,7 +443,8 @@
             btn.disabled = true;
             btn.textContent = 'Menyimpan...';
 
-            const recordId = document.getElementById('edit_record_id').value;
+            const rawId = document.getElementById('edit_record_id').value;
+            const recordId = parseInt(rawId);
 
             const balita = parseInt(document.getElementById('edit_balita').value) || 0;
             const tkPaud = parseInt(document.getElementById('edit_TK_Paud').value) || 0;
@@ -386,7 +463,7 @@
             const totalSemua = totalKecil + totalBesar;
 
             const payload = {
-                NamaKelompokPenerimamanfaat: document.getElementById('edit_NamaKelompokPenerimamanfaat').value,
+                NamaKelompokPenerimamanfaat: document.getElementById('edit_NamaKelompokPenerimamanfaat').value.trim(),
                 balita: balita,
                 "TK/Paud": tkPaud,
                 "Kelas1-3": kelas13,
@@ -401,7 +478,7 @@
                 besar: totalBesar,
                 jumlah: totalSemua,
                 edit_at: new Date().toISOString(),
-                edit_by: 'Admin'
+                edit_by: currentUserNama
             };
 
             const { error } = await _supabase
@@ -412,10 +489,8 @@
             if (error) {
                 alert('Gagal memperbarui data: ' + error.message);
             } else {
-                const modalEl = document.getElementById('modalEditPM');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                modal.hide();
-                
+                alert('Berhasil memperbarui data PM On Going!');
+                modalEditInstance.hide();
                 fetchOnGoingData();
             }
 
@@ -452,13 +527,14 @@
                     .from('data_pm_on_going')
                     .update({ 
                         deleted_at: waktuHapus, 
-                        deleted_by: 'Admin' 
+                        deleted_by: currentUserNama 
                     })
-                    .eq('id', id);
+                    .eq('id', parseInt(id));
 
                 if (error) {
                     alert('Gagal menghapus: ' + error.message);
                 } else {
+                    alert('Data berhasil dihapus!');
                     fetchOnGoingData();
                 }
             }
@@ -467,7 +543,7 @@
         // Soft Delete Masal
         async function hapusDataMasal() {
             const checkboxes = document.querySelectorAll('.check-item:checked');
-            const idsToDelete = Array.from(checkboxes).map(cb => cb.value);
+            const idsToDelete = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
             if (idsToDelete.length === 0) return;
 
@@ -477,21 +553,19 @@
                     .from('data_pm_on_going')
                     .update({ 
                         deleted_at: waktuHapus, 
-                        deleted_by: 'Admin' 
+                        deleted_by: currentUserNama 
                     })
                     .in('id', idsToDelete);
 
                 if (error) {
                     alert('Gagal menghapus data masal: ' + error.message);
                 } else {
+                    alert('Data terpilih berhasil dihapus!');
                     document.getElementById('checkAll').checked = false;
                     fetchOnGoingData();
                 }
             }
         }
-
-        // Jalankan saat halaman dibuka
-        fetchOnGoingData();
     </script>
 </body>
 </html>
