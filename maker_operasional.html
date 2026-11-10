@@ -664,9 +664,9 @@ async function prosesEksekusi(tahap) {
         return;
     }
 
-    // UBAH DISINI: Ubah nilai value checkbox menjadi Integer agar cocok dengan kolom id (serial)
     const idsTerpilih = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value, 10));
-    
+    console.log("ID yang akan dieksekusi:", idsTerpilih); // Debugging log
+
     const waktuSekarang = new Date().toISOString();
     let updatePayload = {
         edit_at: waktuSekarang,
@@ -684,15 +684,24 @@ async function prosesEksekusi(tahap) {
         updatePayload.statusaprove = 'Sudah Aprove';
     }
 
-    let { error } = await _supabase
+    console.log("Payload update:", updatePayload); // Debugging log
+
+    // Eksekusi ke Supabase
+    let { data, error } = await _supabase
         .from('maker_operasional')
         .update(updatePayload)
         .in('id', idsTerpilih);
 
+    // BLOK PENANGKAPAN ERROR DETAIL
     if (error) {
-        alert('Gagal mengeksekusi data: ' + error.message);
+        console.error("DETAIL ERROR SUPABASE:", error);
+        
+        // Menampilkan detail error mentah agar terlihat di layar
+        alert(`GAGAL TOTAL:\nKode: ${error.code}\nPesan: ${error.message}\nDetail: ${error.details || '-'}\nHint: ${error.hint || '-'}`);
         return;
     }
+
+    console.log("Berhasil update:", data);
 
     let modalEl = document.getElementById('modalEksekusi');
     bootstrap.Modal.getInstance(modalEl).hide();
