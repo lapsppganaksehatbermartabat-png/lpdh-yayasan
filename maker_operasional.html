@@ -657,48 +657,49 @@
             btnAprove.disabled = !bisaAprove;
         }
 
-        async function prosesEksekusi(tahap) {
-            const selectedCheckboxes = document.querySelectorAll('.row-checkbox-modal:checked');
-            if (selectedCheckboxes.length === 0) {
-                alert('Pilih minimal satu data!');
-                return;
-            }
+async function prosesEksekusi(tahap) {
+    const selectedCheckboxes = document.querySelectorAll('.row-checkbox-modal:checked');
+    if (selectedCheckboxes.length === 0) {
+        alert('Pilih minimal satu data!');
+        return;
+    }
 
-            // PERBAIKAN UTAMA: Ambil nilai value langsung sebagai string/integer fleksibel (tidak dipaksa parseInt)
-            const idsTerpilih = Array.from(selectedCheckboxes).map(cb => cb.value);
-            const waktuSekarang = new Date().toISOString();
-            let updatePayload = {
-                edit_at: waktuSekarang,
-                edit_by: currentUserNama
-            };
+    // UBAH DISINI: Ubah nilai value checkbox menjadi Integer agar cocok dengan kolom id (serial)
+    const idsTerpilih = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value, 10));
+    
+    const waktuSekarang = new Date().toISOString();
+    let updatePayload = {
+        edit_at: waktuSekarang,
+        edit_by: currentUserNama
+    };
 
-            if (tahap === 'usulan') {
-                updatePayload.waktuusulan = waktuSekarang;
-                updatePayload.statususulan = 'Sudah Diusulkan';
-            } else if (tahap === 'maker') {
-                updatePayload.waktumaker = waktuSekarang;
-                updatePayload.statusmaker = 'Sudah Maker';
-            } else if (tahap === 'aprove') {
-                updatePayload.waktuaprove = waktuSekarang;
-                updatePayload.statusaprove = 'Sudah Aprove';
-            }
+    if (tahap === 'usulan') {
+        updatePayload.waktuusulan = waktuSekarang;
+        updatePayload.statususulan = 'Sudah Diusulkan';
+    } else if (tahap === 'maker') {
+        updatePayload.waktumaker = waktuSekarang;
+        updatePayload.statusmaker = 'Sudah Maker';
+    } else if (tahap === 'aprove') {
+        updatePayload.waktuaprove = waktuSekarang;
+        updatePayload.statusaprove = 'Sudah Aprove';
+    }
 
-            let { error } = await _supabase
-                .from('maker_operasional')
-                .update(updatePayload)
-                .in('id', idsTerpilih);
+    let { error } = await _supabase
+        .from('maker_operasional')
+        .update(updatePayload)
+        .in('id', idsTerpilih);
 
-            if (error) {
-                alert('Gagal mengeksekusi data: ' + error.message);
-                return;
-            }
+    if (error) {
+        alert('Gagal mengeksekusi data: ' + error.message);
+        return;
+    }
 
-            let modalEl = document.getElementById('modalEksekusi');
-            bootstrap.Modal.getInstance(modalEl).hide();
+    let modalEl = document.getElementById('modalEksekusi');
+    bootstrap.Modal.getInstance(modalEl).hide();
 
-            loadDataMaker();
-            alert('Eksekusi berhasil diperbarui!');
-        }
+    loadDataMaker();
+    alert('Eksekusi berhasil diperbarui!');
+}
     </script>
 </body>
 </html>
