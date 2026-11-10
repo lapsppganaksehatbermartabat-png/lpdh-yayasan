@@ -100,7 +100,7 @@
     <div id="content-wrapper">
         <header class="topbar">
             <div class="fw-bold text-dark"><i class="bi bi-gear-fill text-primary me-2"></i> Maker Operasional</div>
-            <div class="fw-semibold text-secondary small">Admin SPPG</div>
+            <div class="fw-semibold text-secondary small" id="userBadgeNama">Admin SPPG</div>
         </header>
 
         <main class="container-fluid p-4">
@@ -291,8 +291,12 @@
         let filteredCurrentData = [];
         let activePanelFilter = '';
         let statusDonutChart = null;
+        let currentUserNama = 'Admin';
+        let currentUserIdsppg = null;
+        let isSuperAdmin = false;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            await cekUser();
             loadDataMaker();
 
             document.getElementById('filterKeyword').addEventListener('input', () => {
@@ -300,13 +304,57 @@
             });
         });
 
+        async function cekUser() {
+            try {
+                let localUser = null;
+                try {
+                    localUser = JSON.parse(sessionStorage.getItem('sppg_user') || 'null');
+                } catch(err) {}
+
+                if (!localUser && window.parent && window.parent.sessionStorage) {
+                    try {
+                        localUser = JSON.parse(window.parent.sessionStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (!localUser) {
+                    try {
+                        localUser = JSON.parse(localStorage.getItem('sppg_user') || 'null');
+                    } catch(err) {}
+                }
+
+                if (localUser) {
+                    currentUserIdsppg = localUser.idsppg;
+                    currentUserNama = localUser.nama_petugas || localUser.username || 'Admin';
+                    document.getElementById('userBadgeNama').innerText = currentUserNama;
+                    
+                    const role = String(localUser.role_access || '').toLowerCase();
+                    const jabatan = String(localUser.jabatan || '').toLowerCase();
+                    isSuperAdmin = role === 'superadmin' || role === 'admin' || jabatan.includes('super');
+                }
+            } catch (err) {
+                console.error('Gagal membaca sesi user:', err);
+            }
+        }
+
         async function loadDataMaker() {
             const tbody = document.getElementById('tabelMaker');
-            let { data, error } = await _supabase
+            
+            if (typeof _supabase === 'undefined') {
+                tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">Objek _supabase tidak ditemukan. Periksa js/supabase.js</td></tr>`;
+                return;
+            }
+
+            let query = _supabase
                 .from('maker_operasional')
                 .select('*')
-                .is('deleted_at', null)
-                .order('id', { ascending: false });
+                .is('deleted_at', null);
+
+            if (currentUserIdsppg && !isSuperAdmin && currentUserIdsppg !== 'SUPERADMIN') {
+                query = query.eq('idsppg', currentUserIdsppg);
+            }
+
+            let { data, error } = await query.order('id', { ascending: false });
 
             if (error) {
                 tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">Gagal memuat data: ${error.message}</td></tr>`;
@@ -525,7 +573,7 @@
         }
 
         // ==========================================
-        // FORM EKSEKUSI & VALIDASI BERJENJANG
+        // FORM EKSEKUSI & VALIDASI BERJENJANG (FIXED ID TYPE)
         // ==========================================
 
         function bukaFormEksekusi() {
@@ -616,11 +664,12 @@
                 return;
             }
 
-            const idsTerpilih = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value, 10));
+            // PERBAIKAN UTAMA: Ambil nilai value langsung sebagai string/integer fleksibel (tidak dipaksa parseInt)
+            const idsTerpilih = Array.from(selectedCheckboxes).map(cb => cb.value);
             const waktuSekarang = new Date().toISOString();
             let updatePayload = {
                 edit_at: waktuSekarang,
-                edit_by: 'Admin'
+                edit_by: currentUserNama
             };
 
             if (tahap === 'usulan') {
