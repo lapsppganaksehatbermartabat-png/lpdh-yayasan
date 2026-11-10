@@ -877,79 +877,79 @@
             alert(`Berhasil mengimport ${data.length} data PIC Posyandu ke grid!`);
         }
 
-        async function simpanDataMassal() {
-            const idsppg = document.getElementById('input_idsppg').value.trim();
-            const tanggalTransaksi = document.getElementById('input_tanggal').value;
+async function simpanDataMassal() {
+    const idsppg = document.getElementById('input_idsppg').value.trim();
+    const tanggalTransaksi = document.getElementById('input_tanggal').value;
 
-            if (!idsppg || !tanggalTransaksi) {
-                alert('ID SPPG dan Tanggal Transaksi wajib diisi!');
-                return;
-            }
+    if (!idsppg || !tanggalTransaksi) {
+        alert('ID SPPG dan Tanggal Transaksi wajib diisi!');
+        return;
+    }
 
-            const rows = document.querySelectorAll('#excelGridBody tr');
-            const dataToInsert = [];
+    const rows = document.querySelectorAll('#excelGridBody tr');
+    const dataToInsert = [];
 
-            for (let [index, row] of rows.entries()) {
-                const namabarang = row.querySelector('.namabarang').value.trim();
-                const quantity = parseFloat(row.querySelector('.quantity').value) || 0;
+    for (let [index, row] of rows.entries()) {
+        const namabarang = row.querySelector('.namabarang').value.trim();
+        const quantity = parseFloat(row.querySelector('.quantity').value) || 0;
 
-                if (!namabarang && quantity === 0) continue;
+        if (!namabarang && quantity === 0) continue;
 
-                if (!namabarang || quantity <= 0) {
-                    alert(`Baris ke-${index + 1}: Nama Barang dan Quantity wajib diisi dengan benar!`);
-                    return;
-                }
-
-                const idbarang = row.querySelector('.idbarang').value.trim();
-                const jenisbelanja = row.querySelector('.jenisbelanja').value.trim();
-                const kategoribahan = row.querySelector('.kategoribahan').value.trim();
-                const kategorilpdh = row.querySelector('.kategorilpdh').value.trim();
-                const satuan = row.querySelector('.satuan').value.trim();
-                const hargasatuan = parseFloat(row.querySelector('.hargasatuan').value) || 0;
-                const tanggalHarga = row.dataset.tanggalharga;
-
-dataToInsert.push({
-    idbarang: idbarang || null,
-    idsppg: idsppg,
-    tanggal: tanggalTransaksi,
-    namabarang: namabarang,
-    quantity: quantity,
-    satuan: satuan || 'hari',
-    jenisbelanja: jenisbelanja || 'Operasional',
-    kategoribahan: kategoribahan || null,
-    kategorilpdh: kategorilpdh || null,
-    hargasatuan: hargasatuan,
-    tanggalupdateharga: tanggalHarga || null,
-    create_by: currentUserNama
-    // HAPUS baris 'jumlah: quantity * hargasatuan,' karena sudah di-generate otomatis oleh database
-});
-            }
-
-            if (dataToInsert.length === 0) {
-                alert('Tidak ada data valid untuk disimpan.');
-                return;
-            }
-
-            const btnSimpan = document.getElementById('btnSimpanMassal');
-            btnSimpan.disabled = true;
-            btnSimpan.innerText = 'Menyimpan...';
-
-            let { error } = await _supabase.from('rab_operasional').insert(dataToInsert);
-
-            btnSimpan.disabled = false;
-            btnSimpan.innerText = 'Simpan Semua ke Database';
-
-            if (error) {
-                alert('Gagal menyimpan: ' + error.message);
-                return;
-            }
-
-            let modalEl = document.getElementById('modalTambahRAB');
-            bootstrap.Modal.getInstance(modalEl).hide();
-
-            loadDataRAB();
-            alert(`Berhasil menyimpan ${dataToInsert.length} data RAB operasional!`);
+        if (!namabarang || quantity <= 0) {
+            alert(`Baris ke-${index + 1}: Nama Barang dan Quantity wajib diisi dengan benar!`);
+            return;
         }
+
+        const idbarang = row.querySelector('.idbarang').value.trim();
+        const jenisbelanja = row.querySelector('.jenisbelanja').value.trim();
+        const kategoribahan = row.querySelector('.kategoribahan').value.trim();
+        const kategorilpdh = row.querySelector('.kategorilpdh').value.trim();
+        const satuan = row.querySelector('.satuan').value.trim();
+        const hargasatuan = parseFloat(row.querySelector('.hargasatuan').value) || 0;
+        const tanggalHarga = row.dataset.tanggalharga;
+
+        // --- PASTIKAN TIDAK ADA KOLOM 'jumlah' DI SINI ---
+        dataToInsert.push({
+            idbarang: idbarang || null,
+            idsppg: idsppg,
+            tanggal: tanggalTransaksi,
+            namabarang: namabarang,
+            quantity: quantity,
+            satuan: satuan || 'hari',
+            jenisbelanja: jenisbelanja || 'Operasional',
+            kategoribahan: kategoribahan || null,
+            kategorilpdh: kategorilpdh || null,
+            hargasatuan: hargasatuan,
+            tanggalupdateharga: tanggalHarga || null,
+            create_by: currentUserNama
+        });
+    }
+
+    if (dataToInsert.length === 0) {
+        alert('Tidak ada data valid untuk disimpan.');
+        return;
+    }
+
+    const btnSimpan = document.getElementById('btnSimpanMassal');
+    btnSimpan.disabled = true;
+    btnSimpan.innerText = 'Menyimpan...';
+
+    let { error } = await _supabase.from('rab_operasional').insert(dataToInsert);
+
+    btnSimpan.disabled = false;
+    btnSimpan.innerText = 'Simpan Semua ke Database';
+
+    if (error) {
+        alert('Gagal menyimpan: ' + error.message);
+        return;
+    }
+
+    let modalEl = document.getElementById('modalTambahRAB');
+    bootstrap.Modal.getInstance(modalEl).hide();
+
+    loadDataRAB();
+    alert(`Berhasil menyimpan ${dataToInsert.length} data RAB operasional!`);
+}
     </script>
 </body>
 </html>
