@@ -908,21 +908,21 @@
                 const hargasatuan = parseFloat(row.querySelector('.hargasatuan').value) || 0;
                 const tanggalHarga = row.dataset.tanggalharga;
 
-                dataToInsert.push({
-                    idbarang: idbarang || null,
-                    idsppg: idsppg,
-                    tanggal: tanggalTransaksi,
-                    namabarang: namabarang,
-                    quantity: quantity,
-                    satuan: satuan || 'hari',
-                    jenisbelanja: jenisbelanja || 'Operasional',
-                    kategoribahan: kategoribahan || null,
-                    kategorilpdh: kategorilpdh || null,
-                    hargasatuan: hargasatuan,
-                    jumlah: quantity * hargasatuan,
-                    tanggalupdateharga: tanggalHarga || null,
-                    create_by: currentUserNama
-                });
+dataToInsert.push({
+    idbarang: idbarang || null,
+    idsppg: idsppg,
+    tanggal: tanggalTransaksi,
+    namabarang: namabarang,
+    quantity: quantity,
+    satuan: satuan || 'hari',
+    jenisbelanja: jenisbelanja || 'Operasional',
+    kategoribahan: kategoribahan || null,
+    kategorilpdh: kategorilpdh || null,
+    hargasatuan: hargasatuan,
+    tanggalupdateharga: tanggalHarga || null,
+    create_by: currentUserNama
+    // HAPUS baris 'jumlah: quantity * hargasatuan,' karena sudah di-generate otomatis oleh database
+});
             }
 
             if (dataToInsert.length === 0) {
