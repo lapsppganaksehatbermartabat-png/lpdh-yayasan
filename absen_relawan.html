@@ -31,22 +31,29 @@
         </div>
     </div>
 
-    <!-- Kotak Filter Tanggal & Pencarian Bar -->
+    <!-- Kotak Filter Tanggal (Tanggal Awal & Tanggal Akhir) & Pencarian Bar -->
     <div class="card shadow-sm bg-white mb-3">
         <div class="card-body py-3">
             <div class="row g-2 align-items-center">
-                <!-- Filter Tanggal -->
+                <!-- Filter Tanggal Awal -->
                 <div class="col-md-3">
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-date"></i></span>
-                        <input type="date" class="form-control" id="filterTanggal" onchange="filterDataAbsen()">
+                        <span class="input-group-text bg-light text-muted" title="Tanggal Awal"><i class="bi bi-calendar-date"></i> Dari</span>
+                        <input type="date" class="form-control" id="filterTanggalMulai" onchange="filterDataAbsen()">
+                    </div>
+                </div>
+                <!-- Filter Tanggal Akhir -->
+                <div class="col-md-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light text-muted" title="Tanggal Akhir"><i class="bi bi-calendar-date"></i> s/d</span>
+                        <input type="date" class="form-control" id="filterTanggalAkhir" onchange="filterDataAbsen()">
                     </div>
                 </div>
                 <!-- Input Pencarian -->
-                <div class="col-md-7">
+                <div class="col-md-4">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light text-muted"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="inputPencarian" placeholder="Cari berdasarkan Nama Relawan, ID Relawan, atau Tugas..." onkeyup="filterDataAbsen()">
+                        <input type="text" class="form-control" id="inputPencarian" placeholder="Cari Nama Relawan, ID, atau Tugas..." onkeyup="filterDataAbsen()">
                     </div>
                 </div>
                 <!-- Tombol Reset Filter -->
@@ -179,7 +186,18 @@
             }
 
             semuaDataAbsen = data || [];
-            tampilkanDataKeTabel(semuaDataAbsen);
+
+            // Set default filter input tanggal ke hari ini pada awal load
+            const todayStr = new Date().toISOString().split('T')[0];
+            const filterMulaiEl = document.getElementById('filterTanggalMulai');
+            const filterAkhirEl = document.getElementById('filterTanggalAkhir');
+            
+            if (!filterMulaiEl.value && !filterAkhirEl.value) {
+                filterMulaiEl.value = todayStr;
+                filterAkhirEl.value = todayStr;
+            }
+
+            filterDataAbsen();
         }
 
         // 2. Render Data ke Tabel HTML
@@ -187,7 +205,7 @@
             const tbody = document.getElementById('tableAbsenBody');
             
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">Tidak ada data absen relawan yang ditemukan.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">Tidak ada data absen relawan untuk rentang tanggal tersebut.</td></tr>`;
                 updateTombolHapusMasal();
                 return;
             }
@@ -227,19 +245,28 @@
             updateTombolHapusMasal();
         }
 
-        // 3. Filter Berdasarkan Tanggal & Pencarian
+        // 3. Filter Berdasarkan Rentang Tanggal (Mulai & Akhir) & Pencarian
         function filterDataAbsen() {
             const keyword = document.getElementById('inputPencarian').value.toLowerCase();
-            const filterTgl = document.getElementById('filterTanggal').value;
+            const tglMulai = document.getElementById('filterTanggalMulai').value;
+            const tglAkhir = document.getElementById('filterTanggalAkhir').value;
 
             const hasilFilter = semuaDataAbsen.filter(item => {
                 const nama = (item.namarelawan || '').toLowerCase();
                 const idrel = (item.idrelawan || '').toLowerCase();
                 const tugas = (item.tugas || '').toLowerCase();
-                const tgl = item.tanggal || '';
+                const tglItem = item.tanggal ? item.tanggal.split('T')[0] : '';
 
                 const cocokKeyword = nama.includes(keyword) || idrel.includes(keyword) || tugas.includes(keyword);
-                const cocokTanggal = filterTgl === '' || tgl === filterTgl;
+                
+                let cocokTanggal = true;
+                if (tglMulai && tglAkhir) {
+                    cocokTanggal = (tglItem >= tglMulai && tglItem <= tglAkhir);
+                } else if (tglMulai) {
+                    cocokTanggal = (tglItem >= tglMulai);
+                } else if (tglAkhir) {
+                    cocokTanggal = (tglItem <= tglAkhir);
+                }
 
                 return cocokKeyword && cocokTanggal;
             });
@@ -249,8 +276,12 @@
 
         function resetFilter() {
             document.getElementById('inputPencarian').value = '';
-            document.getElementById('filterTanggal').value = '';
-            tampilkanDataKeTabel(semuaDataAbsen);
+            // Reset ke tanggal hari ini kembali
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('filterTanggalMulai').value = todayStr;
+            document.getElementById('filterTanggalAkhir').value = todayStr;
+            
+            filterDataAbsen();
         }
 
         // 4. Buka Modal Edit Absen
