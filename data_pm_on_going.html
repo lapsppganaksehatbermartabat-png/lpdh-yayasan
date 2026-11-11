@@ -39,19 +39,26 @@
         <strong>Peringatan Sistem:</strong> <span id="debug-message"></span>
     </div>
 
-    <!-- Kotak Filter Tanggal & Pencarian Bar -->
+    <!-- Kotak Filter Tanggal (Mulai & Akhir) & Pencarian Bar -->
     <div class="card shadow-sm bg-white mb-3">
         <div class="card-body py-3">
             <div class="row g-2 align-items-center">
-                <!-- Filter Tanggal -->
+                <!-- Filter Tanggal Mulai -->
                 <div class="col-md-3">
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-date"></i></span>
-                        <input type="date" class="form-control" id="filterTanggal" onchange="filterDataOnGoing()">
+                        <span class="input-group-text bg-light text-muted" title="Tanggal Awal"><i class="bi bi-calendar-date"></i> Dari</span>
+                        <input type="date" class="form-control" id="filterTanggalMulai" onchange="filterDataOnGoing()">
+                    </div>
+                </div>
+                <!-- Filter Tanggal Akhir -->
+                <div class="col-md-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light text-muted" title="Tanggal Akhir"><i class="bi bi-calendar-date"></i> s/d</span>
+                        <input type="date" class="form-control" id="filterTanggalAkhir" onchange="filterDataOnGoing()">
                     </div>
                 </div>
                 <!-- Input Pencarian -->
-                <div class="col-md-7">
+                <div class="col-md-4">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light text-muted"><i class="bi bi-search"></i></span>
                         <input type="text" class="form-control" id="inputPencarian" placeholder="Cari berdasarkan Nama Kelompok PM, ID KPM, atau ID SPPG..." onkeyup="filterDataOnGoing()">
@@ -312,7 +319,18 @@
             }
 
             semuaDataOnGoing = data || [];
-            tampilkanDataKeTabel(semuaDataOnGoing);
+
+            // Set default filter input tanggal ke hari ini pada awal load
+            const todayStr = new Date().toISOString().split('T')[0];
+            const filterMulaiEl = document.getElementById('filterTanggalMulai');
+            const filterAkhirEl = document.getElementById('filterTanggalAkhir');
+            
+            if (!filterMulaiEl.value && !filterAkhirEl.value) {
+                filterMulaiEl.value = todayStr;
+                filterAkhirEl.value = todayStr;
+            }
+
+            filterDataOnGoing();
         }
 
         // 2. Render Data ke Tabel HTML
@@ -362,19 +380,28 @@
             updateTombolHapusMasal();
         }
 
-        // 3. Filter Berdasarkan Tanggal & Kata Kunci
+        // 3. Filter Berdasarkan Rentang Tanggal (Mulai & Akhir) & Kata Kunci
         function filterDataOnGoing() {
             const keyword = document.getElementById('inputPencarian').value.toLowerCase();
-            const filterTgl = document.getElementById('filterTanggal').value;
+            const tglMulai = document.getElementById('filterTanggalMulai').value;
+            const tglAkhir = document.getElementById('filterTanggalAkhir').value;
 
             const hasilFilter = semuaDataOnGoing.filter(item => {
                 const nama = (item.NamaKelompokPenerimamanfaat || '').toLowerCase();
                 const idkpm = (item.idkpm || '').toLowerCase();
                 const idsppg = (item.idsppg || '').toLowerCase();
-                const tgl = item.tanggalupdate || '';
+                const tglItem = item.tanggalupdate ? item.tanggalupdate.split('T')[0] : '';
 
                 const cocokKeyword = nama.includes(keyword) || idkpm.includes(keyword) || idsppg.includes(keyword);
-                const cocokTanggal = filterTgl === '' || tgl === filterTgl;
+
+                let cocokTanggal = true;
+                if (tglMulai && tglAkhir) {
+                    cocokTanggal = (tglItem >= tglMulai && tglItem <= tglAkhir);
+                } else if (tglMulai) {
+                    cocokTanggal = (tglItem >= tglMulai);
+                } else if (tglAkhir) {
+                    cocokTanggal = (tglItem <= tglAkhir);
+                }
 
                 return cocokKeyword && cocokTanggal;
             });
@@ -384,8 +411,11 @@
 
         function resetFilter() {
             document.getElementById('inputPencarian').value = '';
-            document.getElementById('filterTanggal').value = '';
-            tampilkanDataKeTabel(semuaDataOnGoing);
+            // Reset tanggal ke tanggal hari ini
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('filterTanggalMulai').value = todayStr;
+            document.getElementById('filterTanggalAkhir').value = todayStr;
+            filterDataOnGoing();
         }
 
         // 4. Buka Modal Edit & Populasi Form
